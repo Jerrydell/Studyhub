@@ -1,0 +1,258 @@
+{% extends "base.html" %}
+
+{% block title %}Statistics - StudyHub{% endblock %}
+
+{% block content %}
+
+<!-- Header -->
+<div class="mb-4">
+    <h2><i class="bi bi-graph-up"></i> Your Study Statistics</h2>
+    <p class="text-muted">Track your progress and productivity</p>
+</div>
+
+<!-- Overall Stats Cards -->
+<div class="row g-4 mb-5">
+    
+    <!-- Total Subjects -->
+    <div class="col-md-3">
+        <div class="card text-white bg-primary h-100">
+            <div class="card-body text-center">
+                <i class="bi bi-folder2-open" style="font-size: 3rem; opacity: 0.5;"></i>
+                <h2 class="display-4 mt-3">{{ total_subjects }}</h2>
+                <p class="mb-0">Total Subjects</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Total Notes -->
+    <div class="col-md-3">
+        <div class="card text-white bg-success h-100">
+            <div class="card-body text-center">
+                <i class="bi bi-journal-text" style="font-size: 3rem; opacity: 0.5;"></i>
+                <h2 class="display-4 mt-3">{{ total_notes }}</h2>
+                <p class="mb-0">Total Notes</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Average Notes -->
+    <div class="col-md-3">
+        <div class="card text-white bg-info h-100">
+            <div class="card-body text-center">
+                <i class="bi bi-bar-chart" style="font-size: 3rem; opacity: 0.5;"></i>
+                <h2 class="display-4 mt-3">{{ avg_notes }}</h2>
+                <p class="mb-0">Avg Notes/Subject</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Total Words -->
+    <div class="col-md-3">
+        <div class="card text-white bg-warning h-100">
+            <div class="card-body text-center">
+                <i class="bi bi-fonts" style="font-size: 3rem; opacity: 0.5;"></i>
+                <h2 class="display-4 mt-3">{{ '{:,}'.format(total_words) }}</h2>
+                <p class="mb-0">Total Words</p>
+            </div>
+        </div>
+    </div>
+    
+</div>
+
+<!-- Notes per Subject -->
+{% if subject_stats %}
+<div class="card shadow-sm mb-5">
+    <div class="card-header bg-primary text-white">
+        <h5 class="mb-0">
+            <i class="bi bi-pie-chart"></i> Notes per Subject
+        </h5>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Rank</th>
+                        <th>Subject</th>
+                        <th>Note Count</th>
+                        <th>Percentage</th>
+                        <th>Visual</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for stat in subject_stats %}
+                    <tr>
+                        <td>
+                            {% if loop.index == 1 %}
+                                <i class="bi bi-trophy-fill text-warning"></i>
+                            {% else %}
+                                {{ loop.index }}
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="badge" style="background-color: {{ stat.color }};">
+                                {{ stat.name }}
+                            </span>
+                        </td>
+                        <td><strong>{{ stat.note_count }}</strong></td>
+                        <td>
+                            {% if total_notes > 0 %}
+                                {{ '{:.1f}'.format((stat.note_count / total_notes) * 100) }}%
+                            {% else %}
+                                0%
+                            {% endif %}
+                        </td>
+                        <td style="width: 30%;">
+                            <div class="progress" style="height: 25px;">
+                                <div class="progress-bar" 
+                                     role="progressbar" 
+                                     style="width: {% if total_notes > 0 %}{{ (stat.note_count / total_notes) * 100 }}{% else %}0{% endif %}%; background-color: {{ stat.color }};"
+                                     aria-valuenow="{{ stat.note_count }}" 
+                                     aria-valuemin="0" 
+                                     aria-valuemax="{{ total_notes }}">
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <a href="{{ url_for('main.view_subject', subject_id=stat.id) }}" 
+                               class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-eye"></i> View
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Productivity Insights -->
+<div class="row g-4 mb-5">
+    
+    <div class="col-md-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-lightbulb"></i> Productivity Insights
+                </h5>
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled">
+                    {% if total_notes == 0 %}
+                    <li class="mb-3">
+                        <i class="bi bi-arrow-right text-primary"></i>
+                        Create your first note to start tracking progress
+                    </li>
+                    {% elif total_notes < 10 %}
+                    <li class="mb-3">
+                        <i class="bi bi-arrow-right text-primary"></i>
+                        Great start! You have {{ total_notes }} notes. Keep going!
+                    </li>
+                    {% elif total_notes < 50 %}
+                    <li class="mb-3">
+                        <i class="bi bi-check-circle text-success"></i>
+                        Excellent progress! {{ total_notes }} notes created.
+                    </li>
+                    {% else %}
+                    <li class="mb-3">
+                        <i class="bi bi-star-fill text-warning"></i>
+                        Amazing! You're a power user with {{ total_notes }} notes!
+                    </li>
+                    {% endif %}
+                    
+                    {% if avg_notes >= 5 %}
+                    <li class="mb-3">
+                        <i class="bi bi-check-circle text-success"></i>
+                        Your subjects are well-documented (avg {{ avg_notes }} notes/subject)
+                    </li>
+                    {% endif %}
+                    
+                    {% if total_words > 5000 %}
+                    <li class="mb-3">
+                        <i class="bi bi-check-circle text-success"></i>
+                        You've written {{ '{:,}'.format(total_words) }} words - that's impressive!
+                    </li>
+                    {% endif %}
+                    
+                    <li class="mb-3">
+                        <i class="bi bi-info-circle text-info"></i>
+                        Review your notes regularly to improve retention
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-trophy"></i> Achievements
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="list-group list-group-flush">
+                    
+                    {% if total_subjects >= 1 %}
+                    <div class="list-group-item">
+                        <i class="bi bi-check-circle-fill text-success"></i>
+                        <strong>First Subject</strong> - Created your first subject!
+                    </div>
+                    {% endif %}
+                    
+                    {% if total_notes >= 1 %}
+                    <div class="list-group-item">
+                        <i class="bi bi-check-circle-fill text-success"></i>
+                        <strong>First Note</strong> - Started taking notes!
+                    </div>
+                    {% endif %}
+                    
+                    {% if total_notes >= 10 %}
+                    <div class="list-group-item">
+                        <i class="bi bi-check-circle-fill text-success"></i>
+                        <strong>Note Taker</strong> - Created 10+ notes!
+                    </div>
+                    {% endif %}
+                    
+                    {% if total_notes >= 50 %}
+                    <div class="list-group-item">
+                        <i class="bi bi-check-circle-fill text-warning"></i>
+                        <strong>Dedicated Student</strong> - 50+ notes created!
+                    </div>
+                    {% endif %}
+                    
+                    {% if total_subjects >= 5 %}
+                    <div class="list-group-item">
+                        <i class="bi bi-check-circle-fill text-success"></i>
+                        <strong>Multi-Tasker</strong> - Managing 5+ subjects!
+                    </div>
+                    {% endif %}
+                    
+                    {% if total_words >= 10000 %}
+                    <div class="list-group-item">
+                        <i class="bi bi-check-circle-fill text-warning"></i>
+                        <strong>Wordsmith</strong> - Written 10,000+ words!
+                    </div>
+                    {% endif %}
+                    
+                </div>
+            </div>
+        </div>
+    </div>
+    
+</div>
+
+<!-- Action Buttons -->
+<div class="text-center">
+    <a href="{{ url_for('main.dashboard') }}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Back to Dashboard
+    </a>
+    <a href="{{ url_for('main.subjects') }}" class="btn btn-primary">
+        <i class="bi bi-folder2-open"></i> View Subjects
+    </a>
+</div>
+
+{% endblock %}

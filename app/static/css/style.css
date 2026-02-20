@@ -1,0 +1,281 @@
+/* 
+   StudyHub Custom Styles
+   Enhances Bootstrap with custom branding
+*/
+
+/* Global Styles */
+:root {
+    --primary-color: #0d6efd;
+    --secondary-color: #6c757d;
+    --success-color: #198754;
+    --danger-color: #dc3545;
+    --warning-color: #ffc107;
+    --info-color: #0dcaf0;
+}
+
+body {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background-color: #f8f9fa;
+}
+
+main {
+    flex: 1;
+}
+
+/* Navbar Enhancements */
+.navbar-brand {
+    font-weight: 600;
+    font-size: 1.5rem;
+    transition: transform 0.2s;
+}
+
+.navbar-brand:hover {
+    transform: scale(1.05);
+}
+
+/* Card Hover Effects */
+.card {
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+}
+
+/* Form Styling */
+.form-control:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+}
+
+/* Button Enhancements */
+.btn {
+    transition: all 0.2s;
+}
+
+.btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* Alert Animations */
+.alert {
+    animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Flash Message Icons */
+.alert i {
+    margin-right: 8px;
+}
+
+/* Footer Styling */
+footer {
+    background-color: #f8f9fa;
+    margin-top: auto;
+    border-top: 1px solid #dee2e6;
+}
+
+/* Loading States */
+.btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+/* Dashboard Cards */
+.bg-primary { background-color: #0d6efd !important; }
+.bg-success { background-color: #198754 !important; }
+.bg-info    { background-color: #0dcaf0 !important; }
+
+.card.text-white h2,
+.card.text-white h6,
+.card.text-white p {
+    color: #ffffff !important;
+}
+
+/* Responsive Spacing */
+@media (max-width: 768px) {
+    .display-3 {
+        font-size: 2.5rem;
+    }
+    
+    .btn-lg {
+        font-size: 1rem;
+        padding: 0.5rem 1rem;
+    }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+    width: 10px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--primary-color);
+    border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #0b5ed7;
+}
+
+/* Loading Animation */
+.loading {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 3px solid rgba(255,255,255,.3);
+    border-radius: 50%;
+    border-top-color: #fff;
+    animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Fade In Animation */
+.fade-in {
+    animation: fadeIn 0.5s ease-in;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Search Bar Highlight */
+.form-control:focus {
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+    border-color: var(--primary-color);
+}
+
+/* Progress Bar Animation */
+.progress-bar {
+    transition: width 0.6s ease;
+}
+
+/* Badge Hover */
+.badge {
+    transition: transform 0.2s;
+}
+
+.badge:hover {
+    transform: scale(1.05);
+}
+
+/* List Group Item Hover */
+.list-group-item-action:hover {
+    background-color: #f8f9fa;
+    border-left: 4px solid var(--primary-color);
+    transition: all 0.2s;
+}
+
+/* Table Row Hover */
+.table-hover tbody tr:hover {
+    background-color: rgba(13, 110, 253, 0.05);
+    cursor: pointer;
+}
+
+/* Stats Card Pulse Animation */
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.02); }
+}
+
+.card.pulse {
+    animation: pulse 2s infinite;
+}
+
+/* Dropdown Animation */
+.dropdown-menu {
+    animation: slideDown 0.2s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Success Checkmark Animation */
+@keyframes checkmark {
+    0% {
+        transform: scale(0);
+        opacity: 0;
+    }
+    50% {
+        transform: scale(1.2);
+    }
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+.bi-check-circle-fill {
+    animation: checkmark 0.3s ease-out;
+}
+
+/* Note Content Styling */
+.note-content {
+    line-height: 1.8;
+    font-size: 1.05rem;
+}
+
+.note-content:hover {
+    background: #ffffff;
+    transition: background 0.3s;
+}
+
+/* Responsive Search Bar */
+@media (max-width: 992px) {
+    .navbar-nav .d-flex {
+        margin-top: 10px;
+        width: 100%;
+    }
+    
+    .navbar-nav .d-flex input {
+        width: 100% !important;
+    }
+}
+
+/* Print Styles */
+@media print {
+    .navbar, .btn, .dropdown, footer {
+        display: none !important;
+    }
+    
+    .note-content {
+        background: white !important;
+        border: none !important;
+    }
+}

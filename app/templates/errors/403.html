@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block title %}403 - Access Forbidden{% endblock %}
+
+{% block content %}
+
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        
+        <div class="text-center py-5">
+            <!-- Error Icon -->
+            <div class="mb-4">
+                <i class="bi bi-shield-x text-danger" style="font-size: 8rem;"></i>
+            </div>
+            
+            <!-- Error Message -->
+            <h1 class="display-1 fw-bold text-danger">403</h1>
+            <h2 class="mb-3">Access Forbidden</h2>
+            <p class="lead text-muted mb-4">
+                You don't have permission to access this resource.
+            </p>
+            
+            <!-- Explanation -->
+            <div class="alert alert-warning text-start">
+                <h5 class="alert-heading">
+                    <i class="bi bi-lock"></i> Why am I seeing this?
+                </h5>
+                <ul class="mb-0">
+                    <li>You're trying to access someone else's data</li>
+                    <li>The resource requires special permissions</li>
+                    <li>Your session may have expired</li>
+                </ul>
+            </div>
+            
+            <!-- Action Buttons -->
+            <div class="d-flex gap-2 justify-content-center flex-wrap mt-4">
+                <a href="{{ url_for('main.dashboard') }}" class="btn btn-primary btn-lg">
+                    <i class="bi bi-house-door"></i> Go to Dashboard
+                </a>
+                <button onclick="history.back()" class="btn btn-outline-secondary btn-lg">
+                    <i class="bi bi-arrow-left"></i> Go Back
+                </button>
+            </div>
+        </div>
+        
+    </div>
+</div>
+
+{% endblock %}

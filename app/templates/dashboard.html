@@ -1,0 +1,222 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - StudyHub{% endblock %}
+
+{% block content %}
+
+<!-- Welcome Header -->
+<div class="row mb-4">
+    <div class="col">
+        <h2>
+            <i class="bi bi-speedometer2"></i> Welcome, {{ current_user.username }}!
+        </h2>
+        <p class="text-muted">Here's your study overview</p>
+    </div>
+</div>
+
+<!-- Quick Stats -->
+<div class="row g-4 mb-5">
+    
+    <!-- Subjects Card -->
+    <div class="col-md-4">
+        <div class="card text-white bg-primary h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-subtitle mb-2 opacity-75">Total Subjects</h6>
+                        <h2 class="card-title mb-0">{{ total_subjects }}</h2>
+                    </div>
+                    <i class="bi bi-folder2-open" style="font-size: 3rem; opacity: 0.5;"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Notes Card -->
+    <div class="col-md-4">
+        <div class="card text-white bg-success h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-subtitle mb-2 opacity-75">Total Notes</h6>
+                        <h2 class="card-title mb-0">{{ total_notes }}</h2>
+                    </div>
+                    <i class="bi bi-journal-text" style="font-size: 3rem; opacity: 0.5;"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Activity Card -->
+    <div class="col-md-4">
+        <div class="card text-white bg-info h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-subtitle mb-2 opacity-75">Member Since</h6>
+                        <h2 class="card-title mb-0">
+                            {{ current_user.created_at.strftime('%b %Y') }}
+                        </h2>
+                    </div>
+                    <i class="bi bi-calendar-check" style="font-size: 3rem; opacity: 0.5;"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+</div>
+
+<!-- Main Content -->
+<div class="row">
+    <div class="col-12">
+        
+        {% if subjects %}
+            <!-- Subjects Grid -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h4><i class="bi bi-folder2-open"></i> My Subjects</h4>
+                <a href="{{ url_for('main.create_subject') }}" class="btn btn-primary">
+                    <i class="bi bi-plus-circle"></i> Add Subject
+                </a>
+            </div>
+            
+            <div class="row g-4 mb-5">
+                {% for subject in subjects %}
+                <div class="col-md-6 col-lg-4">
+                    <div class="card h-100 shadow-sm" style="border-left: 4px solid {{ subject.color }};">
+                        <div class="card-body">
+                            <h5 class="card-title">
+                                <a href="{{ url_for('main.view_subject', subject_id=subject.id) }}" 
+                                   class="text-decoration-none text-dark">
+                                    {{ subject.name }}
+                                </a>
+                            </h5>
+                            {% if subject.description %}
+                            <p class="card-text text-muted small">{{ subject.description[:100] }}...</p>
+                            {% endif %}
+                            <div class="mt-3">
+                                <span class="badge bg-secondary">
+                                    <i class="bi bi-journal"></i> {{ subject.note_count }} notes
+                                </span>
+                            </div>
+                        </div>
+                        <div class="card-footer bg-transparent">
+                            <small class="text-muted">
+                                Created {{ subject.created_at.strftime('%b %d, %Y') }}
+                            </small>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            
+            <!-- Recent Notes -->
+            {% if recent_notes %}
+            <h4 class="mt-5 mb-4"><i class="bi bi-clock-history"></i> Recent Notes</h4>
+            <div class="list-group">
+                {% for note in recent_notes %}
+                <a href="{{ url_for('main.view_note', note_id=note.id) }}" 
+                   class="list-group-item list-group-item-action">
+                    <div class="d-flex w-100 justify-content-between">
+                        <h6 class="mb-1">{{ note.title }}</h6>
+                        <small class="text-muted">{{ note.updated_at.strftime('%b %d') }}</small>
+                    </div>
+                    <p class="mb-1 text-muted small">{{ note.preview }}</p>
+                    <small class="text-primary">
+                        <i class="bi bi-folder2"></i> {{ note.subject.name }}
+                    </small>
+                </a>
+                {% endfor %}
+            </div>
+            {% endif %}
+            
+        {% else %}
+            <!-- Empty State -->
+            <div class="card shadow-sm">
+                <div class="card-body text-center py-5">
+                    <i class="bi bi-inbox text-muted" style="font-size: 4rem;"></i>
+                    <h4 class="mt-3">Get Started with StudyHub</h4>
+                    <p class="text-muted mb-4">
+                        You haven't created any subjects yet. Start organizing your studies now!
+                    </p>
+                    <a href="{{ url_for('main.create_subject') }}" class="btn btn-primary btn-lg">
+                        <i class="bi bi-plus-circle"></i> Create Your First Subject
+                    </a>
+                </div>
+            </div>
+        {% endif %}
+        
+    </div>
+</div>
+
+<!-- ✨ AI Study Plan Section -->
+<div class="card shadow-sm mt-4" id="study-plan-card">
+    <div class="card-header bg-dark text-white d-flex align-items-center justify-content-between">
+        <div>
+            <span style="font-size:1.3rem;">✨</span>
+            <strong class="ms-2">AI Study Plan Generator</strong>
+            <span class="badge bg-warning text-dark ms-2">Powered by Gemini</span>
+        </div>
+        <button class="btn btn-warning btn-sm" id="generate-plan-btn">
+            <i class="bi bi-calendar-check"></i> Generate My Study Plan
+        </button>
+    </div>
+    <div class="card-body">
+        <p class="text-muted mb-3">Let AI create a personalized weekly study plan based on your subjects.</p>
+        <div id="plan-loading" class="text-center py-3 d-none">
+            <div class="spinner-border text-primary" role="status"></div>
+            <p class="text-muted mt-2">Gemini is building your study plan...</p>
+        </div>
+        <div id="plan-result" class="d-none"
+             style="background:#f8f9fa; border-left:4px solid #ffc107;
+                    padding:1rem; border-radius:6px;
+                    font-size:0.95rem; line-height:1.8;">
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const csrfToken = "{{ csrf_token() }}";
+
+function renderMarkdown(text) {
+    return text
+        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*(.+?)\*/g, '<em>$1</em>')
+        .replace(/^[\*\-] (.+)/gm, '<li>$1</li>')
+        .replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>')
+        .replace(/^\d+\. (.+)/gm, '<li>$1</li>')
+        .replace(/^### (.+)/gm, '<h6 class="mt-3 mb-1">$1</h6>')
+        .replace(/^## (.+)/gm,  '<h5 class="mt-3 mb-1">$1</h5>')
+        .replace(/^# (.+)/gm,   '<h4 class="mt-3 mb-1">$1</h4>')
+        .replace(/\n\n/g, '<br><br>')
+        .replace(/\n/g, '<br>');
+}
+
+document.getElementById('generate-plan-btn').addEventListener('click', async () => {
+    document.getElementById('plan-loading').classList.remove('d-none');
+    document.getElementById('plan-result').classList.add('d-none');
+
+    try {
+        const res = await fetch('/ai/study-plan', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify({})
+        });
+        const data = await res.json();
+        document.getElementById('plan-loading').classList.add('d-none');
+        document.getElementById('plan-result').innerHTML = renderMarkdown(data.result);
+        document.getElementById('plan-result').classList.remove('d-none');
+        document.getElementById('plan-result').scrollIntoView({behavior:'smooth', block:'nearest'});
+    } catch(e) {
+        document.getElementById('plan-loading').classList.add('d-none');
+        document.getElementById('plan-result').innerHTML = '❌ Something went wrong. Please try again.';
+        document.getElementById('plan-result').classList.remove('d-none');
+    }
+});
+</script>
+{% endblock %}

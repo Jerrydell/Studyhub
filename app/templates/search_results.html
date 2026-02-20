@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+
+{% block title %}Search: {{ query }} - StudyHub{% endblock %}
+
+{% block content %}
+
+<!-- Search Header -->
+<div class="mb-4">
+    <h2><i class="bi bi-search"></i> Search Results</h2>
+    <p class="text-muted">
+        Showing results for: <strong>"{{ query }}"</strong>
+    </p>
+</div>
+
+<!-- Search Form -->
+<div class="card shadow-sm mb-4">
+    <div class="card-body">
+        <form action="{{ url_for('main.search') }}" method="GET" class="row g-3">
+            <div class="col-md-10">
+                <input type="text" name="q" class="form-control form-control-lg" 
+                       placeholder="Search notes and subjects..." 
+                       value="{{ query }}" autofocus required>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary btn-lg w-100">
+                    <i class="bi bi-search"></i> Search
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Results Summary -->
+<div class="alert alert-info">
+    <i class="bi bi-info-circle"></i>
+    Found <strong>{{ subjects|length }} subject(s)</strong> and 
+    <strong>{{ notes|length }} note(s)</strong>
+</div>
+
+<!-- Subjects Results -->
+{% if subjects %}
+<div class="mb-5">
+    <h4 class="mb-3">
+        <i class="bi bi-folder2-open"></i> Subjects 
+        <span class="badge bg-primary">{{ subjects|length }}</span>
+    </h4>
+    
+    <div class="row g-4">
+        {% for subject in subjects %}
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100 shadow-sm" style="border-left: 5px solid {{ subject.color }};">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <a href="{{ url_for('main.view_subject', subject_id=subject.id) }}" 
+                           class="text-decoration-none text-dark">
+                            {{ subject.name }}
+                        </a>
+                    </h5>
+                    {% if subject.description %}
+                    <p class="card-text text-muted">{{ subject.description[:100] }}...</p>
+                    {% endif %}
+                    <span class="badge" style="background-color: {{ subject.color }};">
+                        <i class="bi bi-journal"></i> {{ subject.note_count }} notes
+                    </span>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Notes Results -->
+{% if notes %}
+<div class="mb-5">
+    <h4 class="mb-3">
+        <i class="bi bi-journal-text"></i> Notes 
+        <span class="badge bg-success">{{ notes|length }}</span>
+    </h4>
+    
+    <div class="list-group">
+        {% for note in notes %}
+        <a href="{{ url_for('main.view_note', note_id=note.id) }}" 
+           class="list-group-item list-group-item-action">
+            <div class="d-flex w-100 justify-content-between align-items-start">
+                <div class="flex-grow-1">
+                    <h5 class="mb-2">{{ note.title }}</h5>
+                    <p class="mb-2 text-muted">{{ note.preview }}</p>
+                    <div class="d-flex gap-2 align-items-center">
+                        <span class="badge" style="background-color: {{ note.subject.color }};">
+                            <i class="bi bi-folder2"></i> {{ note.subject.name }}
+                        </span>
+                        <small class="text-muted">
+                            <i class="bi bi-clock"></i> 
+                            {{ note.updated_at.strftime('%b %d, %Y') }}
+                        </small>
+                    </div>
+                </div>
+                <div class="ms-3">
+                    <i class="bi bi-chevron-right text-muted"></i>
+                </div>
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<!-- No Results -->
+{% if not subjects and not notes %}
+<div class="card shadow-sm">
+    <div class="card-body text-center py-5">
+        <i class="bi bi-search text-muted" style="font-size: 5rem;"></i>
+        <h4 class="mt-4">No Results Found</h4>
+        <p class="text-muted mb-4">
+            We couldn't find any subjects or notes matching "<strong>{{ query }}</strong>"
+        </p>
+        
+        <div class="alert alert-light text-start d-inline-block">
+            <strong><i class="bi bi-lightbulb"></i> Search Tips:</strong>
+            <ul class="mb-0 mt-2">
+                <li>Try different keywords</li>
+                <li>Check your spelling</li>
+                <li>Use more general terms</li>
+                <li>Search for partial words</li>
+            </ul>
+        </div>
+        
+        <div class="mt-4">
+            <a href="{{ url_for('main.dashboard') }}" class="btn btn-primary">
+                <i class="bi bi-house"></i> Back to Dashboard
+            </a>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Back Button -->
+<div class="mt-4">
+    <a href="{{ url_for('main.dashboard') }}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Back to Dashboard
+    </a>
+</div>
+
+{% endblock %}

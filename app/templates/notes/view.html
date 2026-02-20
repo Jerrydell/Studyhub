@@ -1,0 +1,282 @@
+{% extends "base.html" %}
+
+{% block title %}{{ note.title }} - StudyHub{% endblock %}
+
+{% block content %}
+
+<!-- Breadcrumb -->
+<nav aria-label="breadcrumb" class="mb-4">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item">
+            <a href="{{ url_for('main.subjects') }}">Subjects</a>
+        </li>
+        <li class="breadcrumb-item">
+            <a href="{{ url_for('main.view_subject', subject_id=note.subject.id) }}">
+                {{ note.subject.name }}
+            </a>
+        </li>
+        <li class="breadcrumb-item active">{{ note.title }}</li>
+    </ol>
+</nav>
+
+<!-- Note Header -->
+<div class="card shadow-sm mb-4" style="border-left: 5px solid {{ note.subject.color }};">
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-start">
+            <div class="flex-grow-1">
+                <h2 class="mb-3">
+                    {% if note.is_pinned %}
+                        <span class="badge bg-warning text-dark me-2">
+                            <i class="bi bi-pin-angle-fill"></i> Pinned
+                        </span>
+                    {% endif %}
+                    {{ note.title }}
+                </h2>
+                
+                <div class="d-flex gap-3 flex-wrap">
+                    <span class="badge" style="background-color: {{ note.subject.color }};">
+                        <i class="bi bi-folder2"></i> {{ note.subject.name }}
+                    </span>
+                    <small class="text-muted">
+                        <i class="bi bi-calendar-plus"></i> 
+                        Created: {{ note.created_at.strftime('%B %d, %Y at %I:%M %p') }}
+                    </small>
+                    <small class="text-muted">
+                        <i class="bi bi-clock-history"></i> 
+                        Updated: {{ note.updated_at.strftime('%B %d, %Y at %I:%M %p') }}
+                    </small>
+                </div>
+            </div>
+            
+            <div class="dropdown">
+                <button class="btn btn-outline-secondary dropdown-toggle" type="button" 
+                        data-bs-toggle="dropdown">
+                    <i class="bi bi-gear"></i> Actions
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    <li>
+                        <form method="POST" action="{{ url_for('main.toggle_pin_note', note_id=note.id) }}" style="margin: 0;">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="dropdown-item">
+                                {% if note.is_pinned %}
+                                    <i class="bi bi-pin-angle"></i> Unpin Note
+                                {% else %}
+                                    <i class="bi bi-pin-angle-fill"></i> Pin Note
+                                {% endif %}
+                            </button>
+                        </form>
+                    </li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li>
+                        <a class="dropdown-item" href="{{ url_for('main.edit_note', note_id=note.id) }}">
+                            <i class="bi bi-pencil"></i> Edit Note
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item" href="{{ url_for('main.export_note', note_id=note.id) }}">
+                            <i class="bi bi-download"></i> Export as Text
+                        </a>
+                    </li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li>
+                        <form method="POST" action="{{ url_for('main.delete_note', note_id=note.id) }}"
+                              onsubmit="return confirm('Delete this note? This cannot be undone!');">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="dropdown-item text-danger">
+                                <i class="bi bi-trash"></i> Delete Note
+                            </button>
+                        </form>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Note Content -->
+<div class="card shadow-sm mb-4">
+    <div class="card-body p-4">
+        <div class="note-content" style="white-space: pre-wrap; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.8; font-size: 1.1rem;">{{ note.content }}</div>
+    </div>
+</div>
+
+<!-- Action Buttons -->
+<div class="d-flex gap-2 mb-4">
+    <a href="{{ url_for('main.edit_note', note_id=note.id) }}" class="btn btn-primary">
+        <i class="bi bi-pencil"></i> Edit Note
+    </a>
+    <a href="{{ url_for('main.view_subject', subject_id=note.subject.id) }}" 
+       class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Back to {{ note.subject.name }}
+    </a>
+    <a href="{{ url_for('main.subjects') }}" class="btn btn-outline-secondary">
+        <i class="bi bi-grid"></i> All Subjects
+    </a>
+</div>
+
+<!-- Study Tips -->
+<div class="alert alert-success">
+    <strong><i class="bi bi-lightbulb-fill"></i> Study Tip:</strong>
+    Review your notes within 24 hours to improve retention by up to 60%!
+</div>
+
+<!-- ✨ AI Assistant Panel -->
+<div class="card shadow-sm mt-4" id="ai-panel">
+    <div class="card-header bg-dark text-white d-flex align-items-center">
+        <span style="font-size:1.3rem;">✨</span>
+        <strong class="ms-2">AI Study Assistant</strong>
+        <span class="badge bg-warning text-dark ms-2">Powered by Gemini</span>
+    </div>
+    <div class="card-body">
+
+        <!-- Action Buttons -->
+        <div class="d-flex flex-wrap gap-2 mb-3">
+            <button class="btn btn-outline-primary btn-sm ai-btn" data-action="summarize">
+                <i class="bi bi-card-text"></i> Summarize
+            </button>
+            <button class="btn btn-outline-success btn-sm ai-btn" data-action="quiz">
+                <i class="bi bi-question-circle"></i> Generate Quiz
+            </button>
+            <button class="btn btn-outline-info btn-sm ai-btn" data-action="explain">
+                <i class="bi bi-lightbulb"></i> Explain Simply
+            </button>
+            <button class="btn btn-outline-warning btn-sm ai-btn" data-action="improve">
+                <i class="bi bi-stars"></i> Improve Note
+            </button>
+        </div>
+
+        <!-- Chat with Note -->
+        <div class="input-group mb-3">
+            <input type="text" id="ai-question" class="form-control"
+                   placeholder="Ask a question about this note...">
+            <button class="btn btn-dark" id="ai-chat-btn">
+                <i class="bi bi-send"></i> Ask
+            </button>
+        </div>
+
+        <!-- Loading Spinner -->
+        <div id="ai-loading" class="text-center py-3 d-none">
+            <div class="spinner-border text-primary" role="status"></div>
+            <p class="text-muted mt-2">Gemini is thinking...</p>
+        </div>
+
+        <!-- Result Box -->
+        <div id="ai-result" class="d-none">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <strong id="ai-result-label" class="text-primary"></strong>
+                <button class="btn btn-sm btn-outline-secondary" id="ai-copy-btn">
+                    <i class="bi bi-clipboard"></i> Copy
+                </button>
+            </div>
+            <div id="ai-result-text"
+                 style="background:#f8f9fa; border-left:4px solid #0d6efd;
+                        padding:1rem; border-radius:6px;
+                        font-size:0.95rem; line-height:1.8;">
+            </div>
+        </div>
+
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .note-content {
+        background: #f8f9fa;
+        padding: 2rem;
+        border-radius: 8px;
+        border-left: 4px solid {{ note.subject.color }};
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const noteId = {{ note.id }};
+const csrfToken = "{{ csrf_token() }}";
+
+const labels = {
+    summarize: '📋 Summary',
+    quiz:      '❓ Quiz Questions',
+    explain:   '💡 Simple Explanation',
+    improve:   '⭐ Improvement Suggestions'
+};
+
+function showLoading() {
+    document.getElementById('ai-loading').classList.remove('d-none');
+    document.getElementById('ai-result').classList.add('d-none');
+}
+
+function renderMarkdown(text) {
+    return text
+        // Bold **text**
+        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+        // Italic *text*
+        .replace(/\*(.+?)\*/g, '<em>$1</em>')
+        // Bullet points starting with * or -
+        .replace(/^[\*\-] (.+)/gm, '<li>$1</li>')
+        // Wrap consecutive <li> in <ul>
+        .replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>')
+        // Numbered lists
+        .replace(/^\d+\. (.+)/gm, '<li>$1</li>')
+        // Headers ### ## #
+        .replace(/^### (.+)/gm, '<h6 class="mt-3 mb-1">$1</h6>')
+        .replace(/^## (.+)/gm,  '<h5 class="mt-3 mb-1">$1</h5>')
+        .replace(/^# (.+)/gm,   '<h4 class="mt-3 mb-1">$1</h4>')
+        // Line breaks
+        .replace(/\n\n/g, '<br><br>')
+        .replace(/\n/g, '<br>');
+}
+
+function showResult(label, text) {
+    document.getElementById('ai-loading').classList.add('d-none');
+    document.getElementById('ai-result-label').textContent = label;
+    document.getElementById('ai-result-text').innerHTML = renderMarkdown(text);
+    document.getElementById('ai-result').classList.remove('d-none');
+    document.getElementById('ai-result').scrollIntoView({behavior: 'smooth', block: 'nearest'});
+}
+
+async function callAI(action, body = {}) {
+    showLoading();
+    try {
+        const res = await fetch(`/note/${noteId}/ai/${action}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify(body)
+        });
+        const data = await res.json();
+        showResult(labels[action] || '✨ AI Response', data.result);
+    } catch (e) {
+        showResult('Error', '❌ Something went wrong. Please try again.');
+    }
+}
+
+document.querySelectorAll('.ai-btn').forEach(btn => {
+    btn.addEventListener('click', () => callAI(btn.dataset.action));
+});
+
+document.getElementById('ai-chat-btn').addEventListener('click', () => {
+    const question = document.getElementById('ai-question').value.trim();
+    if (!question) return;
+    labels['chat'] = '💬 Answer';
+    callAI('chat', {question});
+});
+
+document.getElementById('ai-question').addEventListener('keypress', e => {
+    if (e.key === 'Enter') document.getElementById('ai-chat-btn').click();
+});
+
+document.getElementById('ai-copy-btn').addEventListener('click', () => {
+    const text = document.getElementById('ai-result-text').innerText;
+    navigator.clipboard.writeText(text).then(() => {
+        const btn = document.getElementById('ai-copy-btn');
+        btn.innerHTML = '<i class="bi bi-check"></i> Copied!';
+        setTimeout(() => btn.innerHTML = '<i class="bi bi-clipboard"></i> Copy', 2000);
+    });
+});
+</script>
+{% endblock %}

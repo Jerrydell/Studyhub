@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+
+{% block title %}{{ subject.name }} - StudyHub{% endblock %}
+
+{% block content %}
+
+<!-- Header -->
+<div class="d-flex justify-content-between align-items-start mb-4">
+    <div>
+        <h2 style="border-left: 5px solid {{ subject.color }}; padding-left: 15px;">
+            <i class="bi bi-folder2-open"></i> {{ subject.name }}
+        </h2>
+        {% if subject.description %}
+        <p class="text-muted ms-4">{{ subject.description }}</p>
+        {% endif %}
+    </div>
+    
+    <div class="dropdown">
+        <button class="btn btn-outline-secondary dropdown-toggle" type="button" 
+                data-bs-toggle="dropdown">
+            <i class="bi bi-gear"></i> Manage
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end">
+            <li>
+                <a class="dropdown-item" href="{{ url_for('main.edit_subject', subject_id=subject.id) }}">
+                    <i class="bi bi-pencil"></i> Edit Subject
+                </a>
+            </li>
+            <li><hr class="dropdown-divider"></li>
+            <li>
+                <form method="POST" action="{{ url_for('main.delete_subject', subject_id=subject.id) }}"
+                      onsubmit="return confirm('Delete this subject and ALL its notes? This cannot be undone!');">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="dropdown-item text-danger">
+                        <i class="bi bi-trash"></i> Delete Subject
+                    </button>
+                </form>
+            </li>
+        </ul>
+    </div>
+</div>
+
+<!-- Stats -->
+<div class="row g-3 mb-4">
+    <div class="col-auto">
+        <span class="badge bg-primary p-3">
+            <i class="bi bi-journal"></i> {{ notes|length }} 
+            {{ 'Note' if notes|length == 1 else 'Notes' }}
+        </span>
+    </div>
+    <div class="col-auto">
+        <span class="badge bg-secondary p-3">
+            <i class="bi bi-calendar3"></i> 
+            Created {{ subject.created_at.strftime('%b %d, %Y') }}
+        </span>
+    </div>
+    <div class="col-auto ms-auto">
+        <a href="{{ url_for('main.create_note', subject_id=subject.id) }}" 
+           class="btn btn-primary">
+            <i class="bi bi-plus-circle"></i> Add Note
+        </a>
+    </div>
+</div>
+
+<!-- Notes List -->
+{% if notes %}
+    <div class="row g-4">
+        {% for note in notes %}
+        <div class="col-md-6">
+            <div class="card h-100 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <h5 class="card-title">
+                            {% if note.is_pinned %}
+                                <i class="bi bi-pin-angle-fill text-warning" title="Pinned"></i>
+                            {% endif %}
+                            <a href="{{ url_for('main.view_note', note_id=note.id) }}" 
+                               class="text-decoration-none text-dark">
+                                {{ note.title }}
+                            </a>
+                        </h5>
+                        <div class="dropdown">
+                            <button class="btn btn-sm btn-link text-muted" type="button" 
+                                    data-bs-toggle="dropdown">
+                                <i class="bi bi-three-dots-vertical"></i>
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <li>
+                                    <a class="dropdown-item" 
+                                       href="{{ url_for('main.view_note', note_id=note.id) }}">
+                                        <i class="bi bi-eye"></i> View
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item" 
+                                       href="{{ url_for('main.edit_note', note_id=note.id) }}">
+                                        <i class="bi bi-pencil"></i> Edit
+                                    </a>
+                                </li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li>
+                                    <form method="POST" 
+                                          action="{{ url_for('main.delete_note', note_id=note.id) }}"
+                                          onsubmit="return confirm('Delete this note?');">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <button type="submit" class="dropdown-item text-danger">
+                                            <i class="bi bi-trash"></i> Delete
+                                        </button>
+                                    </form>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <p class="card-text text-muted">{{ note.preview }}</p>
+                    
+                    <div class="mt-3">
+                        <small class="text-muted">
+                            <i class="bi bi-clock"></i> 
+                            Updated {{ note.updated_at.strftime('%b %d, %Y at %I:%M %p') }}
+                        </small>
+                    </div>
+                </div>
+                <div class="card-footer bg-transparent">
+                    <a href="{{ url_for('main.view_note', note_id=note.id) }}" 
+                       class="btn btn-sm btn-outline-primary w-100">
+                        <i class="bi bi-eye"></i> Read Full Note
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+{% else %}
+    <!-- Empty State -->
+    <div class="card shadow-sm">
+        <div class="card-body text-center py-5">
+            <i class="bi bi-journal-x text-muted" style="font-size: 5rem;"></i>
+            <h4 class="mt-4">No Notes Yet</h4>
+            <p class="text-muted mb-4">
+                Start adding notes to this subject
+            </p>
+            <a href="{{ url_for('main.create_note', subject_id=subject.id) }}" 
+               class="btn btn-primary btn-lg">
+                <i class="bi bi-plus-circle"></i> Create First Note
+            </a>
+        </div>
+    </div>
+{% endif %}
+
+<!-- Back Button -->
+<div class="mt-4">
+    <a href="{{ url_for('main.subjects') }}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Back to Subjects
+    </a>
+</div>
+
+{% endblock %}
