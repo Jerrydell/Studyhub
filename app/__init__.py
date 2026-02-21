@@ -21,7 +21,9 @@ def create_app(config_name='default'):
     
     # Create Flask app instance
     app = Flask(__name__)
-    
+
+  from werkzeug.middleware.proxy_fix import ProxyFix
+app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1) 
     # Load configuration
     app.config.from_object(config[config_name])
     
