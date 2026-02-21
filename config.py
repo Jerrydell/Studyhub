@@ -27,10 +27,8 @@ class Config:
     
     # WTForms configuration
     WTF_CSRF_ENABLED = True
-WTF_CSRF_TIME_LIMIT = None
-WTF_CSRF_SSL_STRICT = False
-SESSION_COOKIE_SECURE = False
-SESSION_COOKIE_SAMESITE = 'Lax'
+    WTF_CSRF_TIME_LIMIT = None
+    WTF_CSRF_SSL_STRICT = False
       # No time limit for CSRF tokens
 
 
