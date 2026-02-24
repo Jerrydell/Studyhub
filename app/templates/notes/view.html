@@ -101,17 +101,47 @@
 </div>
 
 <!-- Action Buttons -->
-<div class="d-flex gap-2 mb-4">
+<div class="d-flex gap-2 mb-4 flex-wrap">
     <a href="{{ url_for('main.edit_note', note_id=note.id) }}" class="btn btn-primary">
         <i class="bi bi-pencil"></i> Edit Note
     </a>
-    <a href="{{ url_for('main.view_subject', subject_id=note.subject.id) }}" 
+    <a href="{{ url_for('main.flashcards', note_id=note.id) }}" class="btn btn-warning">
+        <i class="bi bi-card-text"></i> Flashcards
+    </a>
+    <a href="{{ url_for('main.mindmap', note_id=note.id) }}" class="btn btn-info text-white">
+        <i class="bi bi-diagram-3"></i> Mind Map
+    </a>
+    <a href="{{ url_for('main.view_subject', subject_id=note.subject.id) }}"
        class="btn btn-outline-secondary">
         <i class="bi bi-arrow-left"></i> Back to {{ note.subject.name }}
     </a>
     <a href="{{ url_for('main.subjects') }}" class="btn btn-outline-secondary">
         <i class="bi bi-grid"></i> All Subjects
     </a>
+</div>
+
+<!-- Progress Tracker -->
+<div class="card shadow-sm mb-4">
+    <div class="card-body">
+        <h6 class="mb-3"><i class="bi bi-graph-up"></i> Study Progress</h6>
+        <div class="btn-group w-100" role="group">
+            <button onclick="setProgress('unread')"
+                    class="btn {% if note.progress == 'unread' %}btn-secondary{% else %}btn-outline-secondary{% endif %}"
+                    id="btn-unread">
+                📖 Unread
+            </button>
+            <button onclick="setProgress('reading')"
+                    class="btn {% if note.progress == 'reading' %}btn-warning{% else %}btn-outline-warning{% endif %}"
+                    id="btn-reading">
+                📝 In Progress
+            </button>
+            <button onclick="setProgress('mastered')"
+                    class="btn {% if note.progress == 'mastered' %}btn-success{% else %}btn-outline-success{% endif %}"
+                    id="btn-mastered">
+                ✅ Mastered
+            </button>
+        </div>
+    </div>
 </div>
 
 <!-- Study Tips -->
@@ -195,6 +225,23 @@
 <script>
 const noteId = {{ note.id }};
 const csrfToken = "{{ csrf_token() }}";
+
+// Progress Tracker
+async function setProgress(progress) {
+    const res = await fetch(`/note/${noteId}/progress`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+        body: JSON.stringify({ progress })
+    });
+    if (res.ok) {
+        const btns = { unread: 'btn-secondary', reading: 'btn-warning', mastered: 'btn-success' };
+        const outlines = { unread: 'btn-outline-secondary', reading: 'btn-outline-warning', mastered: 'btn-outline-success' };
+        Object.keys(btns).forEach(p => {
+            const btn = document.getElementById(`btn-${p}`);
+            btn.className = `btn ${p === progress ? btns[p] : outlines[p]}`;
+        });
+    }
+}
 
 const labels = {
     summarize: '📋 Summary',

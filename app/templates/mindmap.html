@@ -1,0 +1,209 @@
+{% extends "base.html" %}
+{% block title %}Mind Map - {{ note.title }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-diagram-3"></i> Mind Map</h2>
+    <a href="{{ url_for('main.view_note', note_id=note.id) }}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Back to Note
+    </a>
+</div>
+
+<div class="alert alert-info">
+    <strong>📖 Note:</strong> {{ note.title }}
+</div>
+
+<!-- Generate Button -->
+<div class="text-center mb-4" id="generate-section">
+    <button class="btn btn-dark btn-lg" id="generate-btn" onclick="generateMindMap()">
+        ✨ Generate Mind Map with AI
+    </button>
+    <p class="text-muted mt-2">AI will create a visual mind map from your note</p>
+</div>
+
+<!-- Loading -->
+<div id="loading" class="text-center py-4 d-none">
+    <div class="spinner-border text-dark"></div>
+    <p class="mt-2">Generating mind map...</p>
+</div>
+
+<!-- Mind Map Canvas -->
+<div id="mindmap-section" class="d-none">
+    <div class="card shadow-sm mb-3">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <strong>🧠 Mind Map</strong>
+            <button class="btn btn-sm btn-outline-secondary" onclick="generateMindMap()">
+                <i class="bi bi-arrow-counterclockwise"></i> Regenerate
+            </button>
+        </div>
+        <div class="card-body p-0">
+            <canvas id="mindmap-canvas" style="width:100%; height:500px;"></canvas>
+        </div>
+    </div>
+
+    <!-- Legend -->
+    <div id="legend" class="card shadow-sm">
+        <div class="card-body">
+            <h6 class="mb-3">🗂️ Branches</h6>
+            <div id="legend-items" class="d-flex flex-wrap gap-2"></div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const csrfToken = "{{ csrf_token() }}";
+
+async function generateMindMap() {
+    document.getElementById('loading').classList.remove('d-none');
+    document.getElementById('mindmap-section').classList.add('d-none');
+    document.getElementById('generate-btn').disabled = true;
+
+    const res = await fetch('{{ url_for("main.generate_mindmap", note_id=note.id) }}', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+        body: JSON.stringify({})
+    });
+    const data = await res.json();
+    document.getElementById('loading').classList.add('d-none');
+    document.getElementById('generate-btn').disabled = false;
+
+    if (data.error) {
+        alert(data.error);
+        return;
+    }
+
+    document.getElementById('generate-section').classList.add('d-none');
+    document.getElementById('mindmap-section').classList.remove('d-none');
+    drawMindMap(data.mindmap);
+}
+
+function drawMindMap(data) {
+    const canvas = document.getElementById('mindmap-canvas');
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.parentElement.getBoundingClientRect();
+    canvas.width = rect.width * dpr;
+    canvas.height = 500 * dpr;
+    canvas.style.width = rect.width + 'px';
+    canvas.style.height = '500px';
+
+    const ctx = canvas.getContext('2d');
+    ctx.scale(dpr, dpr);
+
+    const W = rect.width;
+    const H = 500;
+    const cx = W / 2;
+    const cy = H / 2;
+
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = '#f8f9fa';
+    ctx.fillRect(0, 0, W, H);
+
+    const branches = data.branches || [];
+    const angleStep = (2 * Math.PI) / branches.length;
+    const branchRadius = Math.min(W, H) * 0.3;
+    const childRadius = Math.min(W, H) * 0.12;
+
+    // Draw branches
+    branches.forEach((branch, i) => {
+        const angle = i * angleStep - Math.PI / 2;
+        const bx = cx + branchRadius * Math.cos(angle);
+        const by = cy + branchRadius * Math.sin(angle);
+
+        // Line from center to branch
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.lineTo(bx, by);
+        ctx.strokeStyle = branch.color || '#667eea';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+
+        // Branch circle
+        ctx.beginPath();
+        ctx.arc(bx, by, 45, 0, 2 * Math.PI);
+        ctx.fillStyle = branch.color || '#667eea';
+        ctx.fill();
+
+        // Branch text
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 11px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        wrapText(ctx, branch.name, bx, by, 80, 14);
+
+        // Draw children
+        const children = branch.children || [];
+        const childAngleStep = Math.PI / (children.length + 1);
+        const startAngle = angle - Math.PI / 2.5;
+
+        children.forEach((child, j) => {
+            const childAngle = startAngle + (j + 1) * childAngleStep;
+            const crx = bx + childRadius * 1.8 * Math.cos(childAngle);
+            const cry = by + childRadius * 1.8 * Math.sin(childAngle);
+
+            // Line to child
+            ctx.beginPath();
+            ctx.moveTo(bx, by);
+            ctx.lineTo(crx, cry);
+            ctx.strokeStyle = branch.color || '#667eea';
+            ctx.lineWidth = 1.5;
+            ctx.setLineDash([4, 3]);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Child bubble
+            ctx.beginPath();
+            ctx.arc(crx, cry, 28, 0, 2 * Math.PI);
+            ctx.fillStyle = (branch.color || '#667eea') + '33';
+            ctx.fill();
+            ctx.strokeStyle = branch.color || '#667eea';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+
+            ctx.fillStyle = '#333';
+            ctx.font = '9px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            wrapText(ctx, child, crx, cry, 50, 11);
+        });
+    });
+
+    // Center circle
+    ctx.beginPath();
+    ctx.arc(cx, cy, 60, 0, 2 * Math.PI);
+    ctx.fillStyle = '#2d3748';
+    ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 12px Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    wrapText(ctx, data.center, cx, cy, 100, 14);
+
+    // Legend
+    const legendHtml = branches.map(b =>
+        `<span class="badge" style="background:${b.color}; font-size:0.85rem;">${b.name}</span>`
+    ).join('');
+    document.getElementById('legend-items').innerHTML = legendHtml;
+}
+
+function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
+    const words = text.split(' ');
+    let lines = [];
+    let line = '';
+    words.forEach(word => {
+        const test = line + (line ? ' ' : '') + word;
+        if (ctx.measureText(test).width > maxWidth && line) {
+            lines.push(line);
+            line = word;
+        } else {
+            line = test;
+        }
+    });
+    lines.push(line);
+    const startY = y - ((lines.length - 1) * lineHeight) / 2;
+    lines.forEach((l, i) => ctx.fillText(l, x, startY + i * lineHeight));
+}
+</script>
+{% endblock %}

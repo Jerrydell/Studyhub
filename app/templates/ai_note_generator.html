@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% block title %}AI Note Generator - StudyHub{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>✨ AI Note Generator</h2>
+    <a href="{{ url_for('main.dashboard') }}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Back
+    </a>
+</div>
+
+<!-- Generator Form -->
+<div class="card shadow-sm mb-4">
+    <div class="card-header bg-dark text-white">
+        <strong>✨ Generate a Study Note with AI</strong>
+        <span class="badge bg-warning text-dark ms-2">Powered by AI</span>
+    </div>
+    <div class="card-body">
+        <form method="POST" action="{{ url_for('main.ai_generate_note') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">📚 Topic</label>
+                    <input type="text" name="topic" class="form-control form-control-lg"
+                           placeholder="e.g. Photosynthesis, Newton's Laws, World War 2..."
+                           value="{{ topic or '' }}" required>
+                    <small class="text-muted">Enter any topic and AI will write a full study note</small>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-bold">📁 Save to Subject</label>
+                    <select name="subject_id" class="form-select form-select-lg">
+                        <option value="">-- Select Subject --</option>
+                        {% for subject in subjects %}
+                        <option value="{{ subject.id }}"
+                            {% if subject_id and subject_id|int == subject.id %}selected{% endif %}>
+                            {{ subject.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-bold">🎯 Level</label>
+                    <select name="level" class="form-select form-select-lg">
+                        <option value="beginner">🟢 Beginner</option>
+                        <option value="intermediate" selected>🟡 Intermediate</option>
+                        <option value="advanced">🔴 Advanced</option>
+                    </select>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-dark btn-lg mt-3" id="generate-btn">
+                ✨ Generate Note
+            </button>
+        </form>
+    </div>
+</div>
+
+{% if generated_content %}
+<!-- Generated Note -->
+<div class="card shadow-sm">
+    <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+        <strong>✅ Generated Note — Review and Save</strong>
+    </div>
+    <div class="card-body">
+        <form method="POST" action="{{ url_for('main.save_generated_note') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="subject_id" value="{{ subject_id or '' }}">
+
+            <div class="mb-3">
+                <label class="form-label fw-bold">Note Title</label>
+                <input type="text" name="title" class="form-control form-control-lg"
+                       value="{{ topic }}" required>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label fw-bold">Note Content</label>
+                <textarea name="content" class="form-control" rows="15" required>{{ generated_content }}</textarea>
+                <small class="text-muted">You can edit the content before saving</small>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label fw-bold">Save to Subject</label>
+                <select name="subject_id" class="form-select" required>
+                    <option value="">-- Select Subject --</option>
+                    {% for subject in subjects %}
+                    <option value="{{ subject.id }}"
+                        {% if subject_id and subject_id|int == subject.id %}selected{% endif %}>
+                        {{ subject.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-success btn-lg">
+                    <i class="bi bi-save"></i> Save Note
+                </button>
+                <a href="{{ url_for('main.ai_generate_note') }}" class="btn btn-outline-secondary btn-lg">
+                    ✨ Generate Another
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.querySelector('form').addEventListener('submit', function() {
+    const btn = document.getElementById('generate-btn');
+    if (btn) {
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Generating...';
+        btn.disabled = true;
+    }
+});
+</script>
+{% endblock %}

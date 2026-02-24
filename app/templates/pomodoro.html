@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% block title %}Pomodoro Timer - StudyHub{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6 text-center">
+
+        <h2 class="mb-4"><i class="bi bi-stopwatch"></i> Pomodoro Timer</h2>
+
+        <!-- Mode Buttons -->
+        <div class="btn-group mb-4" role="group">
+            <button class="btn btn-danger active" onclick="setMode('pomodoro')">🍅 Focus (25m)</button>
+            <button class="btn btn-outline-info" onclick="setMode('short')">☕ Short Break (5m)</button>
+            <button class="btn btn-outline-success" onclick="setMode('long')">🌿 Long Break (15m)</button>
+        </div>
+
+        <!-- Timer Display -->
+        <div class="card shadow-lg mb-4" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+            <div class="card-body py-5">
+                <div id="timer-display" style="font-size: 6rem; font-weight: bold; color: white; font-family: monospace;">
+                    25:00
+                </div>
+                <p id="mode-label" class="text-white opacity-75 mb-0">Focus Time</p>
+            </div>
+        </div>
+
+        <!-- Controls -->
+        <div class="d-flex justify-content-center gap-3 mb-4">
+            <button class="btn btn-success btn-lg px-5" id="start-btn" onclick="startTimer()">
+                <i class="bi bi-play-fill"></i> Start
+            </button>
+            <button class="btn btn-warning btn-lg" onclick="pauseTimer()">
+                <i class="bi bi-pause-fill"></i> Pause
+            </button>
+            <button class="btn btn-secondary btn-lg" onclick="resetTimer()">
+                <i class="bi bi-arrow-counterclockwise"></i> Reset
+            </button>
+        </div>
+
+        <!-- Session Counter -->
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h5>🍅 Sessions Completed: <span id="session-count" class="text-danger fw-bold">0</span></h5>
+                <p class="text-muted mb-0">Every 4 sessions, take a long break!</p>
+            </div>
+        </div>
+
+        <!-- Tips -->
+        <div class="alert alert-info mt-4">
+            <strong>💡 Pomodoro Technique:</strong> Focus for 25 minutes, then take a 5 minute break. After 4 sessions, take a 15 minute break!
+        </div>
+
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let timer;
+let timeLeft = 25 * 60;
+let isRunning = false;
+let sessions = 0;
+let currentMode = 'pomodoro';
+
+const modes = {
+    pomodoro: { time: 25 * 60, label: 'Focus Time', color: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' },
+    short:    { time: 5 * 60,  label: 'Short Break', color: 'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)' },
+    long:     { time: 15 * 60, label: 'Long Break', color: 'linear-gradient(135deg, #2193b0 0%, #6dd5ed 100%)' }
+};
+
+function setMode(mode) {
+    currentMode = mode;
+    clearInterval(timer);
+    isRunning = false;
+    timeLeft = modes[mode].time;
+    document.getElementById('mode-label').textContent = modes[mode].label;
+    document.querySelector('.card.shadow-lg').style.background = modes[mode].color;
+    document.getElementById('start-btn').innerHTML = '<i class="bi bi-play-fill"></i> Start';
+    updateDisplay();
+
+    document.querySelectorAll('.btn-group .btn').forEach(b => {
+        b.className = b.className.replace('btn-danger', 'btn-outline-danger')
+                                 .replace('btn-info', 'btn-outline-info')
+                                 .replace('btn-success', 'btn-outline-success');
+    });
+}
+
+function updateDisplay() {
+    const mins = Math.floor(timeLeft / 60).toString().padStart(2, '0');
+    const secs = (timeLeft % 60).toString().padStart(2, '0');
+    document.getElementById('timer-display').textContent = `${mins}:${secs}`;
+    document.title = `${mins}:${secs} - StudyHub Timer`;
+}
+
+function startTimer() {
+    if (isRunning) return;
+    isRunning = true;
+    document.getElementById('start-btn').innerHTML = '<i class="bi bi-play-fill"></i> Running...';
+    timer = setInterval(() => {
+        timeLeft--;
+        updateDisplay();
+        if (timeLeft <= 0) {
+            clearInterval(timer);
+            isRunning = false;
+            if (currentMode === 'pomodoro') {
+                sessions++;
+                document.getElementById('session-count').textContent = sessions;
+            }
+            document.getElementById('start-btn').innerHTML = '<i class="bi bi-play-fill"></i> Start';
+            alert(currentMode === 'pomodoro' ? '🍅 Focus session done! Take a break!' : '⏰ Break over! Time to focus!');
+        }
+    }, 1000);
+}
+
+function pauseTimer() {
+    clearInterval(timer);
+    isRunning = false;
+    document.getElementById('start-btn').innerHTML = '<i class="bi bi-play-fill"></i> Resume';
+}
+
+function resetTimer() {
+    clearInterval(timer);
+    isRunning = false;
+    timeLeft = modes[currentMode].time;
+    document.getElementById('start-btn').innerHTML = '<i class="bi bi-play-fill"></i> Start';
+    updateDisplay();
+}
+
+updateDisplay();
+</script>
+{% endblock %}

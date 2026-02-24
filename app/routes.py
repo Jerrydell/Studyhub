@@ -4,6 +4,7 @@ Organized by functionality: auth, main, etc.
 """
 
 from flask import Blueprint, render_template, redirect, url_for, flash, request, abort
+from datetime import datetime
 from flask_login import login_user, logout_user, login_required, current_user
 from app.extensions import db
 from app.models import User, Subject, Note
@@ -674,3 +675,306 @@ def ai_study_plan():
         return jsonify({'result': 'You have no subjects yet. Add some subjects and notes first!'})
     result = generate_study_plan(subjects_data)
     return jsonify({'result': result})
+
+
+# ============================================================================
+# PROGRESS TRACKER
+# ============================================================================
+
+@main_bp.route('/note/<int:note_id>/progress', methods=['POST'])
+@login_required
+def update_progress(note_id):
+    note = Note.query.get_or_404(note_id)
+    if note.subject.user_id != current_user.id:
+        abort(403)
+    progress = request.json.get('progress', 'unread')
+    if progress in ['unread', 'reading', 'mastered']:
+        note.progress = progress
+        db.session.commit()
+    return jsonify({'success': True, 'progress': progress})
+
+
+# ============================================================================
+# EXAM DATES
+# ============================================================================
+
+from app.models import ExamDate
+
+@main_bp.route('/exams')
+@login_required
+def exams():
+    exam_list = ExamDate.query.filter_by(user_id=current_user.id).order_by(ExamDate.exam_date).all()
+    return render_template('exams.html', title='Exam Dates', exams=exam_list)
+
+
+@main_bp.route('/exams/add', methods=['POST'])
+@login_required
+def add_exam():
+    subject_name = request.form.get('subject_name', '').strip()
+    exam_date_str = request.form.get('exam_date', '')
+    notes = request.form.get('notes', '').strip()
+    try:
+        exam_date = datetime.strptime(exam_date_str, '%Y-%m-%dT%H:%M')
+        exam = ExamDate(
+            subject_name=subject_name,
+            exam_date=exam_date,
+            notes=notes,
+            user_id=current_user.id
+        )
+        db.session.add(exam)
+        db.session.commit()
+        flash('Exam date added!', 'success')
+    except Exception as e:
+        flash('Error adding exam date.', 'danger')
+    return redirect(url_for('main.exams'))
+
+
+@main_bp.route('/exams/<int:exam_id>/delete', methods=['POST'])
+@login_required
+def delete_exam(exam_id):
+    exam = ExamDate.query.get_or_404(exam_id)
+    if exam.user_id != current_user.id:
+        abort(403)
+    db.session.delete(exam)
+    db.session.commit()
+    flash('Exam date deleted.', 'success')
+    return redirect(url_for('main.exams'))
+
+
+# ============================================================================
+# FLASHCARDS
+# ============================================================================
+
+from app.ai_service import call_ai
+
+@main_bp.route('/note/<int:note_id>/flashcards')
+@login_required
+def flashcards(note_id):
+    note = Note.query.get_or_404(note_id)
+    if note.subject.user_id != current_user.id:
+        abort(403)
+    return render_template('flashcards.html', title='Flashcards', note=note)
+
+
+@main_bp.route('/note/<int:note_id>/flashcards/generate', methods=['POST'])
+@login_required
+def generate_flashcards(note_id):
+    note = Note.query.get_or_404(note_id)
+    if note.subject.user_id != current_user.id:
+        abort(403)
+    prompt = f"""Generate 8 flashcards from this study note. Return ONLY a JSON array like this:
+[
+  {{"front": "Question or term", "back": "Answer or definition"}},
+  ...
+]
+No extra text, just the JSON array.
+
+Note Title: {note.title}
+Note Content: {note.content}"""
+    result = call_ai(prompt, max_tokens=1500)
+    try:
+        import json, re
+        match = re.search(r'\[.*\]', result, re.DOTALL)
+        if match:
+            cards = json.loads(match.group())
+            return jsonify({'cards': cards})
+    except Exception:
+        pass
+    return jsonify({'cards': [], 'error': 'Could not generate flashcards. Try again.'})
+
+
+# ============================================================================
+# POMODORO TIMER
+# ============================================================================
+
+@main_bp.route('/pomodoro')
+@login_required
+def pomodoro():
+    return render_template('pomodoro.html', title='Pomodoro Timer')
+
+
+# ============================================================================
+# AI EXAM SUGGESTER
+# ============================================================================
+
+@main_bp.route('/exams/ai-suggest', methods=['POST'])
+@login_required
+def ai_suggest_exams():
+    from app.ai_service import call_ai
+    import json, re
+
+    # Get all user's subjects and notes
+    subjects = current_user.subjects.all()
+    if not subjects:
+        return jsonify({'error': 'No subjects found. Add some subjects and notes first!'})
+
+    subjects_info = []
+    for subject in subjects:
+        notes = subject.notes.all()
+        note_titles = [n.title for n in notes]
+        subjects_info.append({
+            'subject': subject.name,
+            'notes': note_titles,
+            'note_count': len(note_titles)
+        })
+
+    today = datetime.utcnow().strftime('%Y-%m-%d')
+    summary = "\n".join([
+        f"- {s['subject']}: {s['note_count']} notes ({', '.join(s['notes'][:3])}{'...' if len(s['notes']) > 3 else ''})"
+        for s in subjects_info
+    ])
+
+    prompt = f"""You are a study planner. Based on the student's subjects and notes below, suggest realistic exam dates starting from today ({today}).
+
+Subjects and Notes:
+{summary}
+
+Return ONLY a JSON array like this (no extra text):
+[
+  {{
+    "subject_name": "Mathematics",
+    "exam_date": "2026-03-15T09:00",
+    "notes": "Focus on linear equations and measurements"
+  }}
+]
+
+Generate one exam per subject, spread them out at least 1 week apart, starting 2-4 weeks from today:"""
+
+    result = call_ai(prompt, max_tokens=1000)
+    try:
+        match = re.search(r'\[.*\]', result, re.DOTALL)
+        if match:
+            suggestions = json.loads(match.group())
+            return jsonify({'suggestions': suggestions})
+    except Exception:
+        pass
+    return jsonify({'error': 'Could not generate suggestions. Please try again.'})
+
+
+# ============================================================================
+# AI NOTE GENERATOR
+# ============================================================================
+
+@main_bp.route('/notes/generate', methods=['GET', 'POST'])
+@login_required
+def ai_generate_note():
+    from app.ai_service import call_ai
+    subjects = current_user.subjects.all()
+
+    if request.method == 'POST':
+        topic = request.form.get('topic', '').strip()
+        subject_id = request.form.get('subject_id')
+        level = request.form.get('level', 'intermediate')
+
+        prompt = f"""You are an expert teacher. Write a comprehensive and well-structured study note about:
+
+Topic: {topic}
+Level: {level}
+
+Structure the note with:
+1. A clear introduction
+2. Key concepts with explanations
+3. Important definitions
+4. Examples where relevant
+5. Key points to remember
+
+Write it as a proper study note a student can learn from:"""
+
+        generated_content = call_ai(prompt, max_tokens=2000)
+
+        # Clean markdown symbols from generated content
+        import re
+        generated_content = re.sub(r'\*\*(.+?)\*\*', r'\1', generated_content)  # Remove **bold**
+        generated_content = re.sub(r'\*(.+?)\*', r'\1', generated_content)       # Remove *italic*
+        generated_content = re.sub(r'^#{1,6}\s+', '', generated_content, flags=re.MULTILINE)  # Remove headers
+        generated_content = re.sub(r'^\s*[-*]\s+', '• ', generated_content, flags=re.MULTILINE)  # Clean bullets
+
+        return render_template('ai_note_generator.html',
+                               title='AI Note Generator',
+                               subjects=subjects,
+                               generated_content=generated_content,
+                               topic=topic,
+                               subject_id=subject_id)
+
+    return render_template('ai_note_generator.html',
+                           title='AI Note Generator',
+                           subjects=subjects,
+                           generated_content=None)
+
+
+@main_bp.route('/notes/generate/save', methods=['POST'])
+@login_required
+def save_generated_note():
+    title = request.form.get('title', '').strip()
+    content = request.form.get('content', '').strip()
+    subject_id = request.form.get('subject_id')
+
+    if not title or not content or not subject_id:
+        flash('Missing required fields.', 'danger')
+        return redirect(url_for('main.ai_generate_note'))
+
+    subject = Subject.query.get_or_404(subject_id)
+    if subject.user_id != current_user.id:
+        abort(403)
+
+    note = Note(title=title, content=content, subject_id=subject.id)
+    db.session.add(note)
+    db.session.commit()
+    flash('AI generated note saved successfully!', 'success')
+    return redirect(url_for('main.view_note', note_id=note.id))
+
+
+# ============================================================================
+# MIND MAP GENERATOR
+# ============================================================================
+
+@main_bp.route('/note/<int:note_id>/mindmap')
+@login_required
+def mindmap(note_id):
+    note = Note.query.get_or_404(note_id)
+    if note.subject.user_id != current_user.id:
+        abort(403)
+    return render_template('mindmap.html', title='Mind Map', note=note)
+
+
+@main_bp.route('/note/<int:note_id>/mindmap/generate', methods=['POST'])
+@login_required
+def generate_mindmap(note_id):
+    from app.ai_service import call_ai
+    import json, re
+
+    note = Note.query.get_or_404(note_id)
+    if note.subject.user_id != current_user.id:
+        abort(403)
+
+    prompt = f"""Analyze this study note and create a mind map structure. Return ONLY a JSON object like this (no extra text):
+{{
+  "center": "Main Topic",
+  "branches": [
+    {{
+      "name": "Branch 1",
+      "color": "#FF6B6B",
+      "children": ["subtopic 1", "subtopic 2", "subtopic 3"]
+    }},
+    {{
+      "name": "Branch 2", 
+      "color": "#4ECDC4",
+      "children": ["subtopic 1", "subtopic 2"]
+    }}
+  ]
+}}
+
+Use 4-6 branches. Colors should be bright hex colors.
+
+Note Title: {note.title}
+Note Content: {note.content}"""
+
+    result = call_ai(prompt, max_tokens=1500)
+    try:
+        match = re.search(r'\{.*\}', result, re.DOTALL)
+        if match:
+            mindmap_data = json.loads(match.group())
+            return jsonify({'mindmap': mindmap_data})
+    except Exception:
+        pass
+    return jsonify({'error': 'Could not generate mind map. Please try again.'})

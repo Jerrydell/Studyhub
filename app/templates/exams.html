@@ -1,0 +1,195 @@
+{% extends "base.html" %}
+{% block title %}Exam Dates - StudyHub{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-calendar-check"></i> Exam Dates</h2>
+    <div class="d-flex gap-2">
+        <button class="btn btn-dark" id="ai-suggest-btn" onclick="suggestExams()">
+            ✨ AI Suggest Exams
+        </button>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addExamModal">
+            <i class="bi bi-plus-circle"></i> Add Exam
+        </button>
+    </div>
+</div>
+
+<!-- AI Suggestion Panel -->
+<div id="ai-suggestion-panel" class="card shadow-sm mb-4 d-none border-warning">
+    <div class="card-header bg-dark text-white d-flex align-items-center">
+        <span style="font-size:1.2rem;">✨</span>
+        <strong class="ms-2">AI Exam Suggestions</strong>
+        <span class="badge bg-warning text-dark ms-2">Based on your notes</span>
+    </div>
+    <div class="card-body">
+        <div id="ai-loading" class="text-center py-3 d-none">
+            <div class="spinner-border text-warning"></div>
+            <p class="mt-2 text-muted">AI is analyzing your notes...</p>
+        </div>
+        <div id="suggestions-list"></div>
+    </div>
+</div>
+
+{% if exams %}
+    <div class="row g-4">
+        {% for exam in exams %}
+        <div class="col-md-6">
+            <div class="card shadow-sm h-100 {% if exam.is_urgent %}border-danger{% endif %}">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <h5 class="card-title">
+                            {% if exam.is_urgent %}🚨{% else %}📅{% endif %}
+                            {{ exam.subject_name }}
+                        </h5>
+                        <form method="POST" action="{{ url_for('main.delete_exam', exam_id=exam.id) }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="btn btn-sm btn-outline-danger"
+                                    onclick="return confirm('Delete this exam date?')">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </form>
+                    </div>
+                    <p class="text-muted mb-1">
+                        <i class="bi bi-calendar3"></i>
+                        {{ exam.exam_date.strftime('%B %d, %Y at %I:%M %p') }}
+                    </p>
+                    {% if exam.notes %}
+                    <p class="text-muted small mb-2">📝 {{ exam.notes }}</p>
+                    {% endif %}
+                    <div class="mt-3">
+                        {% if exam.days_remaining == 0 %}
+                            <span class="badge bg-danger fs-6">📢 Exam is Today!</span>
+                        {% elif exam.is_urgent %}
+                            <span class="badge bg-warning text-dark fs-6">
+                                ⚠️ {{ exam.days_remaining }} days remaining!
+                            </span>
+                        {% else %}
+                            <span class="badge bg-success fs-6">
+                                ✅ {{ exam.days_remaining }} days remaining
+                            </span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+{% else %}
+    <div class="card shadow-sm">
+        <div class="card-body text-center py-5">
+            <i class="bi bi-calendar-x text-muted" style="font-size: 4rem;"></i>
+            <h4 class="mt-3">No Exam Dates Yet</h4>
+            <p class="text-muted">Add exams manually or let AI suggest them based on your notes!</p>
+            <div class="d-flex justify-content-center gap-3">
+                <button class="btn btn-dark" onclick="suggestExams()">
+                    ✨ AI Suggest Exams
+                </button>
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addExamModal">
+                    <i class="bi bi-plus-circle"></i> Add Manually
+                </button>
+            </div>
+        </div>
+    </div>
+{% endif %}
+
+<!-- Add Exam Modal -->
+<div class="modal fade" id="addExamModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-calendar-plus"></i> Add Exam Date</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('main.add_exam') }}" id="add-exam-form">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Subject Name</label>
+                        <input type="text" name="subject_name" id="modal-subject" class="form-control"
+                               placeholder="e.g. Mathematics" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Exam Date & Time</label>
+                        <input type="datetime-local" name="exam_date" id="modal-date" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Notes (optional)</label>
+                        <textarea name="notes" id="modal-notes" class="form-control" rows="2"
+                                  placeholder="e.g. Room 101, bring calculator"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-circle"></i> Add Exam
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const csrfToken = "{{ csrf_token() }}";
+
+async function suggestExams() {
+    document.getElementById('ai-suggestion-panel').classList.remove('d-none');
+    document.getElementById('ai-loading').classList.remove('d-none');
+    document.getElementById('suggestions-list').innerHTML = '';
+    document.getElementById('ai-suggest-btn').disabled = true;
+
+    try {
+        const res = await fetch('/exams/ai-suggest', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+            body: JSON.stringify({})
+        });
+        const data = await res.json();
+        document.getElementById('ai-loading').classList.add('d-none');
+        document.getElementById('ai-suggest-btn').disabled = false;
+
+        if (data.error) {
+            document.getElementById('suggestions-list').innerHTML = `<p class="text-danger">${data.error}</p>`;
+            return;
+        }
+
+        let html = '<p class="text-muted mb-3">AI suggested these exam dates based on your notes. Click <strong>Add</strong> to save any you like!</p><div class="row g-3">';
+        data.suggestions.forEach(s => {
+            const date = new Date(s.exam_date);
+            const formatted = date.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            html += `
+            <div class="col-md-6">
+                <div class="card border-warning h-100">
+                    <div class="card-body">
+                        <h6 class="fw-bold">📅 ${s.subject_name}</h6>
+                        <p class="text-muted small mb-1"><i class="bi bi-calendar3"></i> ${formatted}</p>
+                        <p class="text-muted small mb-3">📝 ${s.notes}</p>
+                        <button class="btn btn-warning btn-sm w-100"
+                                onclick="addSuggestedExam('${s.subject_name}', '${s.exam_date}', '${s.notes.replace(/'/g, "\\'")}')">
+                            <i class="bi bi-plus-circle"></i> Add This Exam
+                        </button>
+                    </div>
+                </div>
+            </div>`;
+        });
+        html += '</div>';
+        document.getElementById('suggestions-list').innerHTML = html;
+
+    } catch(e) {
+        document.getElementById('ai-loading').classList.add('d-none');
+        document.getElementById('ai-suggest-btn').disabled = false;
+        document.getElementById('suggestions-list').innerHTML = '<p class="text-danger">❌ Something went wrong. Please try again.</p>';
+    }
+}
+
+function addSuggestedExam(subject, date, notes) {
+    document.getElementById('modal-subject').value = subject;
+    document.getElementById('modal-date').value = date;
+    document.getElementById('modal-notes').value = notes;
+    new bootstrap.Modal(document.getElementById('addExamModal')).show();
+}
+</script>
+{% endblock %}

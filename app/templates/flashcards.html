@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+{% block title %}Flashcards - {{ note.title }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-card-text"></i> Flashcards</h2>
+    <a href="{{ url_for('main.view_note', note_id=note.id) }}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Back to Note
+    </a>
+</div>
+
+<div class="alert alert-info">
+    <strong>📖 Note:</strong> {{ note.title }}
+</div>
+
+<!-- Generate Button -->
+<div class="text-center mb-4" id="generate-section">
+    <button class="btn btn-primary btn-lg" id="generate-btn" onclick="generateCards()">
+        <i class="bi bi-stars"></i> Generate Flashcards with AI
+    </button>
+    <p class="text-muted mt-2">AI will create 8 flashcards from your note</p>
+</div>
+
+<!-- Loading -->
+<div id="loading" class="text-center py-4 d-none">
+    <div class="spinner-border text-primary"></div>
+    <p class="mt-2">Generating flashcards...</p>
+</div>
+
+<!-- Flashcard Display -->
+<div id="flashcard-section" class="d-none">
+
+    <!-- Progress -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <span class="text-muted">Card <span id="current-card">1</span> of <span id="total-cards">0</span></span>
+        <div class="progress" style="width: 200px; height: 10px;">
+            <div id="progress-bar" class="progress-bar bg-success" style="width: 0%"></div>
+        </div>
+    </div>
+
+    <!-- Flashcard -->
+    <div class="text-center mb-4" style="perspective: 1000px;">
+        <div id="flashcard" onclick="flipCard()"
+             style="width: 100%; height: 250px; cursor: pointer; position: relative; transform-style: preserve-3d; transition: transform 0.5s;">
+
+            <!-- Front -->
+            <div style="position: absolute; width: 100%; height: 100%; backface-visibility: hidden;
+                        background: linear-gradient(135deg, #667eea, #764ba2); border-radius: 16px;
+                        display: flex; align-items: center; justify-content: center; padding: 2rem;">
+                <div>
+                    <p class="text-white opacity-75 mb-2">❓ Question</p>
+                    <h4 id="card-front" class="text-white fw-bold"></h4>
+                    <p class="text-white opacity-50 mt-3 small">Tap to reveal answer</p>
+                </div>
+            </div>
+
+            <!-- Back -->
+            <div style="position: absolute; width: 100%; height: 100%; backface-visibility: hidden;
+                        transform: rotateY(180deg); background: linear-gradient(135deg, #11998e, #38ef7d);
+                        border-radius: 16px; display: flex; align-items: center; justify-content: center; padding: 2rem;">
+                <div>
+                    <p class="text-white opacity-75 mb-2">✅ Answer</p>
+                    <h4 id="card-back" class="text-white fw-bold"></h4>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Navigation -->
+    <div class="d-flex justify-content-center gap-3">
+        <button class="btn btn-outline-secondary btn-lg" onclick="prevCard()">
+            <i class="bi bi-arrow-left"></i> Previous
+        </button>
+        <button class="btn btn-success btn-lg" onclick="nextCard()">
+            Next <i class="bi bi-arrow-right"></i>
+        </button>
+    </div>
+
+    <!-- Restart -->
+    <div class="text-center mt-3">
+        <button class="btn btn-outline-primary" onclick="restartCards()">
+            <i class="bi bi-arrow-counterclockwise"></i> Restart
+        </button>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let cards = [];
+let currentIndex = 0;
+let isFlipped = false;
+const csrfToken = "{{ csrf_token() }}";
+
+async function generateCards() {
+    document.getElementById('loading').classList.remove('d-none');
+    document.getElementById('generate-btn').disabled = true;
+
+    const res = await fetch('{{ url_for("main.generate_flashcards", note_id=note.id) }}', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+        body: JSON.stringify({})
+    });
+    const data = await res.json();
+    document.getElementById('loading').classList.add('d-none');
+
+    if (data.cards && data.cards.length > 0) {
+        cards = data.cards;
+        document.getElementById('total-cards').textContent = cards.length;
+        document.getElementById('generate-section').classList.add('d-none');
+        document.getElementById('flashcard-section').classList.remove('d-none');
+        showCard(0);
+    } else {
+        alert('Could not generate flashcards. Please try again.');
+        document.getElementById('generate-btn').disabled = false;
+    }
+}
+
+function showCard(index) {
+    currentIndex = index;
+    isFlipped = false;
+    document.getElementById('flashcard').style.transform = 'rotateY(0deg)';
+    document.getElementById('card-front').textContent = cards[index].front;
+    document.getElementById('card-back').textContent = cards[index].back;
+    document.getElementById('current-card').textContent = index + 1;
+    const pct = ((index + 1) / cards.length) * 100;
+    document.getElementById('progress-bar').style.width = pct + '%';
+}
+
+function flipCard() {
+    isFlipped = !isFlipped;
+    document.getElementById('flashcard').style.transform = isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)';
+}
+
+function nextCard() {
+    if (currentIndex < cards.length - 1) showCard(currentIndex + 1);
+    else alert('🎉 You finished all flashcards!');
+}
+
+function prevCard() {
+    if (currentIndex > 0) showCard(currentIndex - 1);
+}
+
+function restartCards() {
+    showCard(0);
+}
+</script>
+{% endblock %}
