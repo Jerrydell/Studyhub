@@ -6,4 +6,4 @@ Flask-Migrate==4.0.5
 email-validator==2.1.0
 python-dotenv==1.0.0
 gunicorn==21.2.0
-google-generativeai==0.5.4
+pg8000==1.30.5
