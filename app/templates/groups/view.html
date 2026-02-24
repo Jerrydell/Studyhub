@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+{% block title %}{{ group.name }} - StudyHub{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2>👥 {{ group.name }}</h2>
+        {% if group.description %}
+        <p class="text-muted mb-0">{{ group.description }}</p>
+        {% endif %}
+    </div>
+    <a href="{{ url_for('main.groups') }}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Back
+    </a>
+</div>
+
+<div class="row g-4">
+
+    <!-- Left Column -->
+    <div class="col-md-8">
+
+        <!-- Share a Note -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-primary text-white">
+                <strong><i class="bi bi-share"></i> Share a Note with the Group</strong>
+            </div>
+            <div class="card-body">
+                {% if user_notes %}
+                <form method="POST" action="{{ url_for('main.share_note_to_group', group_id=group.id) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="d-flex gap-2">
+                        <select name="note_id" class="form-select" required>
+                            <option value="">-- Select a note to share --</option>
+                            {% for note in user_notes %}
+                            <option value="{{ note.id }}">
+                                {{ note.subject.name }} → {{ note.title }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-share"></i> Share
+                        </button>
+                    </div>
+                </form>
+                {% else %}
+                <p class="text-muted mb-0">You have no notes yet. Create some notes to share!</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Shared Notes -->
+        <div class="card shadow-sm">
+            <div class="card-header">
+                <strong>📚 Shared Notes ({{ shared_notes|length }})</strong>
+            </div>
+            <div class="card-body">
+                {% if shared_notes %}
+                    {% for shared in shared_notes %}
+                    <div class="card mb-3 border-start border-primary border-3">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <h6 class="mb-1">📄 {{ shared.note.title }}</h6>
+                                    <p class="text-muted small mb-1">
+                                        📁 {{ shared.note.subject.name }} •
+                                        👤 Shared by <strong>{{ shared.sharer.username }}</strong> •
+                                        🕐 {{ shared.shared_at.strftime('%b %d, %Y') }}
+                                    </p>
+                                    <p class="text-muted small mb-0">{{ shared.note.preview }}</p>
+                                </div>
+                                <a href="{{ url_for('main.view_note', note_id=shared.note.id) }}"
+                                   class="btn btn-sm btn-outline-primary ms-2">
+                                    <i class="bi bi-eye"></i> View
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                <div class="text-center py-4">
+                    <i class="bi bi-journal-x text-muted" style="font-size: 3rem;"></i>
+                    <p class="text-muted mt-2">No notes shared yet. Be the first to share!</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Column -->
+    <div class="col-md-4">
+
+        <!-- Invite Code -->
+        <div class="card shadow-sm mb-4 border-warning">
+            <div class="card-body text-center">
+                <h6 class="text-muted mb-2">🔑 Invite Code</h6>
+                <h2 class="fw-bold text-primary" style="letter-spacing: 0.3rem;">
+                    {{ group.invite_code }}
+                </h2>
+                <button class="btn btn-outline-primary btn-sm w-100"
+                        onclick="navigator.clipboard.writeText('{{ group.invite_code }}');alert('Invite code copied!')">
+                    <i class="bi bi-clipboard"></i> Copy Code
+                </button>
+                <p class="text-muted small mt-2 mb-0">Share this code with friends to invite them</p>
+            </div>
+        </div>
+
+        <!-- Members -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header">
+                <strong>👥 Members ({{ members|length }})</strong>
+            </div>
+            <div class="list-group list-group-flush">
+                {% for member in members %}
+                <div class="list-group-item d-flex justify-content-between align-items-center">
+                    <div>
+                        <i class="bi bi-person-circle text-primary"></i>
+                        <strong class="ms-2">{{ member.username }}</strong>
+                        {% if member.id == current_user.id %}
+                        <span class="badge bg-secondary ms-1">You</span>
+                        {% endif %}
+                    </div>
+                    {% if member.id == group.created_by %}
+                    <span class="badge bg-warning text-dark">👑 Admin</span>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Leave Group -->
+        {% if group.created_by != current_user.id %}
+        <form method="POST" action="{{ url_for('main.leave_group', group_id=group.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-outline-danger w-100"
+                    onclick="return confirm('Are you sure you want to leave this group?')">
+                <i class="bi bi-box-arrow-right"></i> Leave Group
+            </button>
+        </form>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -978,3 +978,151 @@ Note Content: {note.content}"""
     except Exception:
         pass
     return jsonify({'error': 'Could not generate mind map. Please try again.'})
+
+
+# ============================================================================
+# STUDY GROUPS
+# ============================================================================
+
+from app.models import StudyGroup, SharedNote, group_members
+
+@main_bp.route('/groups')
+@login_required
+def groups():
+    my_groups = StudyGroup.query.join(group_members).filter(
+        group_members.c.user_id == current_user.id
+    ).all()
+    created_groups = StudyGroup.query.filter_by(created_by=current_user.id).all()
+    all_groups = list({g.id: g for g in my_groups + created_groups}.values())
+    return render_template('groups/list.html', title='Study Groups', groups=all_groups)
+
+
+@main_bp.route('/groups/create', methods=['POST'])
+@login_required
+def create_group():
+    name = request.form.get('name', '').strip()
+    description = request.form.get('description', '').strip()
+    if not name:
+        flash('Group name is required.', 'danger')
+        return redirect(url_for('main.groups'))
+
+    invite_code = StudyGroup.generate_invite_code()
+    while StudyGroup.query.filter_by(invite_code=invite_code).first():
+        invite_code = StudyGroup.generate_invite_code()
+
+    group = StudyGroup(
+        name=name,
+        description=description,
+        invite_code=invite_code,
+        created_by=current_user.id
+    )
+    db.session.add(group)
+    db.session.flush()
+    group.members.append(current_user)
+    db.session.commit()
+    flash(f'Group created! Invite code: {invite_code}', 'success')
+    return redirect(url_for('main.view_group', group_id=group.id))
+
+
+@main_bp.route('/groups/join', methods=['POST'])
+@login_required
+def join_group():
+    invite_code = request.form.get('invite_code', '').strip().upper()
+    group = StudyGroup.query.filter_by(invite_code=invite_code).first()
+    if not group:
+        flash('Invalid invite code. Please check and try again.', 'danger')
+        return redirect(url_for('main.groups'))
+    if current_user in group.members.all():
+        flash('You are already a member of this group!', 'info')
+        return redirect(url_for('main.view_group', group_id=group.id))
+    group.members.append(current_user)
+    db.session.commit()
+    flash(f'You joined {group.name}!', 'success')
+    return redirect(url_for('main.view_group', group_id=group.id))
+
+
+@main_bp.route('/groups/<int:group_id>')
+@login_required
+def view_group(group_id):
+    group = StudyGroup.query.get_or_404(group_id)
+    if current_user not in group.members.all() and group.created_by != current_user.id:
+        abort(403)
+    shared_notes = group.shared_notes.order_by(SharedNote.shared_at.desc()).all()
+    user_notes = []
+    for subject in current_user.subjects:
+        for note in subject.notes:
+            user_notes.append(note)
+    members = group.members.all()
+    return render_template('groups/view.html', title=group.name,
+                           group=group, shared_notes=shared_notes,
+                           user_notes=user_notes, members=members)
+
+
+@main_bp.route('/groups/<int:group_id>/share', methods=['POST'])
+@login_required
+def share_note_to_group(group_id):
+    group = StudyGroup.query.get_or_404(group_id)
+    if current_user not in group.members.all():
+        abort(403)
+    note_id = request.form.get('note_id')
+    note = Note.query.get_or_404(note_id)
+    if note.subject.user_id != current_user.id:
+        abort(403)
+    existing = SharedNote.query.filter_by(note_id=note.id, group_id=group.id).first()
+    if existing:
+        flash('This note is already shared in this group!', 'info')
+        return redirect(url_for('main.view_group', group_id=group_id))
+    shared = SharedNote(note_id=note.id, group_id=group.id, shared_by=current_user.id)
+    db.session.add(shared)
+    db.session.commit()
+    flash(f'Note "{note.title}" shared with the group!', 'success')
+    return redirect(url_for('main.view_group', group_id=group_id))
+
+
+@main_bp.route('/groups/<int:group_id>/leave', methods=['POST'])
+@login_required
+def leave_group(group_id):
+    group = StudyGroup.query.get_or_404(group_id)
+    if current_user in group.members.all():
+        group.members.remove(current_user)
+        db.session.commit()
+        flash(f'You left {group.name}.', 'info')
+    return redirect(url_for('main.groups'))
+
+
+# ============================================================================
+# LEADERBOARD
+# ============================================================================
+
+@main_bp.route('/leaderboard')
+@login_required
+def leaderboard():
+    from app.models import User, Note, Subject
+    from sqlalchemy import func
+
+    users = User.query.all()
+    leaderboard_data = []
+
+    for user in users:
+        total_notes = sum(s.note_count for s in user.subjects)
+        total_subjects = user.subjects.count()
+        mastered = sum(
+            s.notes.filter_by(progress='mastered').count()
+            for s in user.subjects
+        )
+        score = (total_notes * 10) + (total_subjects * 5) + (mastered * 20)
+        leaderboard_data.append({
+            'username': user.username,
+            'total_notes': total_notes,
+            'total_subjects': total_subjects,
+            'mastered': mastered,
+            'score': score,
+            'is_me': user.id == current_user.id
+        })
+
+    leaderboard_data.sort(key=lambda x: x['score'], reverse=True)
+    for i, entry in enumerate(leaderboard_data):
+        entry['rank'] = i + 1
+
+    return render_template('leaderboard.html', title='Leaderboard',
+                           leaderboard=leaderboard_data)

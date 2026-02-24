@@ -114,3 +114,59 @@ class ExamDate(db.Model):
 
     def __repr__(self):
         return f'<ExamDate {self.subject_name}>'
+
+
+# ============================================================================
+# STUDY GROUPS
+# ============================================================================
+
+import random
+import string
+
+group_members = db.Table('group_members',
+    db.Column('user_id', db.Integer, db.ForeignKey('users.id'), primary_key=True),
+    db.Column('group_id', db.Integer, db.ForeignKey('study_groups.id'), primary_key=True),
+    db.Column('joined_at', db.DateTime, default=datetime.utcnow)
+)
+
+
+class StudyGroup(db.Model):
+    __tablename__ = 'study_groups'
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    description = db.Column(db.Text)
+    invite_code = db.Column(db.String(8), unique=True, nullable=False)
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+    creator = db.relationship('User', foreign_keys=[created_by])
+    members = db.relationship('User', secondary=group_members, lazy='dynamic')
+    shared_notes = db.relationship('SharedNote', backref='group', lazy='dynamic', cascade='all, delete-orphan')
+
+    @staticmethod
+    def generate_invite_code():
+        return ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
+
+    @property
+    def member_count(self):
+        return self.members.count()
+
+    def __repr__(self):
+        return f'<StudyGroup {self.name}>'
+
+
+class SharedNote(db.Model):
+    __tablename__ = 'shared_notes'
+
+    id = db.Column(db.Integer, primary_key=True)
+    note_id = db.Column(db.Integer, db.ForeignKey('notes.id'), nullable=False)
+    group_id = db.Column(db.Integer, db.ForeignKey('study_groups.id'), nullable=False)
+    shared_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    shared_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+    note = db.relationship('Note')
+    sharer = db.relationship('User')
+
+    def __repr__(self):
+        return f'<SharedNote {self.note_id}>'

@@ -42,9 +42,9 @@ class RegistrationForm(FlaskForm):
         'Password',
         validators=[
             DataRequired(message='Password is required'),
-            Length(min=6, message='Password must be at least 6 characters long')
+            Length(min=4, message='Password must be at least 4 characters long')
         ],
-        render_kw={'placeholder': 'Create a strong password'}
+        render_kw={'placeholder': 'Create a password (min 4 characters)'}
     )
     
     confirm_password = PasswordField(
@@ -74,7 +74,7 @@ class RegistrationForm(FlaskForm):
         Custom validator to check if email already exists
         Prevents duplicate accounts
         """
-        user = User.query.filter_by(email=email.data).first()
+        user = User.query.filter_by(email=email.data.lower()).first()
         if user:
             raise ValidationError(
                 'Email already registered. Please use a different email or login.'
