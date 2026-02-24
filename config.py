@@ -13,8 +13,12 @@ class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'dev-secret-key-change-in-production'
     
     # Database configuration
-    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or \
-        'sqlite:///' + os.path.join(basedir, 'studyhub.db')
+     database_url = os.environ.get('DATABASE_URL') or \
+    'sqlite:///' + os.path.join(basedir, 'studyhub.db')
+	if database_url.startswith('postgres://'):
+   	 database_url = database_url.replace('postgres://', 'postgresql://', 1)
+	SQLALCHEMY_DATABASE_URI = database_url
+        
     
     # Disable modification tracking (saves resources)
     SQLALCHEMY_TRACK_MODIFICATIONS = False
