@@ -69,7 +69,8 @@ class Note(db.Model):
     title = db.Column(db.String(200), nullable=False)
     content = db.Column(db.Text, nullable=False)
     is_pinned = db.Column(db.Boolean, default=False, nullable=False)
-    progress = db.Column(db.String(20), default='unread', nullable=False)  # unread, reading, mastered
+    progress = db.Column(db.String(20), default="unread", nullable=False)
+    color = db.Column(db.String(7), default="#ffffff")  # Note background color
     subject_id = db.Column(db.Integer, db.ForeignKey('subjects.id'), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)

@@ -7,3 +7,4 @@ email-validator==2.1.0
 python-dotenv==1.0.0
 gunicorn==21.2.0
 pg8000==1.30.5
+reportlab==4.1.0

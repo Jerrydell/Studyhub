@@ -20,7 +20,7 @@
 </nav>
 
 <!-- Note Header -->
-<div class="card shadow-sm mb-4" style="border-left: 5px solid {{ note.subject.color }};">
+<div class="card shadow-sm mb-4" id="note-card" style="border-left: 5px solid {{ note.subject.color }}; background-color: {{ note.color or "#ffffff" }};">
     <div class="card-body">
         <div class="d-flex justify-content-between align-items-start">
             <div class="flex-grow-1">
@@ -111,6 +111,15 @@
     <a href="{{ url_for('main.mindmap', note_id=note.id) }}" class="btn btn-info text-white">
         <i class="bi bi-diagram-3"></i> Mind Map
     </a>
+    <a href="{{ url_for('main.export_note_pdf', note_id=note.id) }}" class="btn btn-danger">
+        <i class="bi bi-file-earmark-pdf"></i> Export PDF
+    </a>
+    <div class="d-flex align-items-center gap-2 ms-2">
+        <label class="text-muted small mb-0">🎨 Color:</label>
+        <input type="color" id="note-color-picker" value="{{ note.color or '#ffffff' }}"
+               onchange="updateNoteColor(this.value)"
+               style="width:40px; height:35px; border:none; cursor:pointer; border-radius:6px;">
+    </div>
     <a href="{{ url_for('main.view_subject', subject_id=note.subject.id) }}"
        class="btn btn-outline-secondary">
         <i class="bi bi-arrow-left"></i> Back to {{ note.subject.name }}
@@ -227,6 +236,15 @@ const noteId = {{ note.id }};
 const csrfToken = "{{ csrf_token() }}";
 
 // Progress Tracker
+async function updateNoteColor(color) {
+    document.getElementById('note-card').style.backgroundColor = color;
+    await fetch('/note/' + noteId + '/color', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+        body: JSON.stringify({ color: color })
+    });
+}
+
 async function setProgress(progress) {
     const res = await fetch(`/note/${noteId}/progress`, {
         method: 'POST',
