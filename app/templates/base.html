@@ -102,12 +102,36 @@
                             </form>
                         </li>
                         
+                        <!-- Notification Bell -->
+                        <li class="nav-item">
+                            <a class="nav-link position-relative" href="{{ url_for('main.notifications') }}">
+                                🔔
+                                {% if current_user.unread_notifications_count > 0 %}
+                                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size:0.6rem;">
+                                    {{ current_user.unread_notifications_count }}
+                                </span>
+                                {% endif %}
+                            </a>
+                        </li>
+                        <!-- User Dropdown -->
                         <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" 
+                            <a class="nav-link dropdown-toggle d-flex align-items-center gap-2" href="#" id="userDropdown" role="button" 
                                data-bs-toggle="dropdown" aria-expanded="false">
-                                <i class="bi bi-person-circle"></i> {{ current_user.username }}
+                                {% if current_user.profile_photo %}
+                                <img src="{{ current_user.profile_photo }}" style="width:30px; height:30px; border-radius:50%; object-fit:cover;">
+                                {% else %}
+                                <div style="width:30px; height:30px; border-radius:50%; background:{{ current_user.avatar_color }}; display:flex; align-items:center; justify-content:center; font-size:0.75rem; font-weight:bold; color:white;">
+                                    {{ current_user.initials }}
+                                </div>
+                                {% endif %}
+                                {{ current_user.username }}
                             </a>
                             <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+                                <li>
+                                    <a class="dropdown-item" href="{{ url_for('main.profile') }}">
+                                        <i class="bi bi-person-circle"></i> My Profile
+                                    </a>
+                                </li>
                                 <li>
                                     <a class="dropdown-item" href="{{ url_for('main.settings') }}">
                                         <i class="bi bi-gear"></i> Settings

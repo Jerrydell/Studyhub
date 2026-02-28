@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+{% block title %}My Profile - StudyHub{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>👤 My Profile</h2>
+</div>
+
+<div class="row g-4">
+    <div class="col-md-4">
+        <div class="card shadow-sm mb-4 text-center">
+            <div class="card-body py-4">
+                {% if current_user.profile_photo %}
+                <img src="{{ current_user.profile_photo }}" alt="Profile"
+                     style="width:100px; height:100px; border-radius:50%; object-fit:cover; margin:0 auto 15px; display:block; border: 3px solid {{ current_user.avatar_color }};">
+                {% else %}
+                <div style="width:100px; height:100px; border-radius:50%; background:{{ current_user.avatar_color }};
+                            display:flex; align-items:center; justify-content:center;
+                            font-size:2.5rem; font-weight:bold; color:white; margin:0 auto 15px;">
+                    {{ current_user.initials }}
+                </div>
+                {% endif %}
+                <h4 class="fw-bold">{{ current_user.username }}</h4>
+                <p class="text-muted small">{{ current_user.email }}</p>
+                {% if current_user.bio %}<p class="text-muted">{{ current_user.bio }}</p>{% endif %}
+                <p class="text-muted small"><i class="bi bi-calendar3"></i> Joined {{ current_user.created_at.strftime('%B %Y') }}</p>
+            </div>
+        </div>
+
+        <div class="card shadow-sm">
+            <div class="card-header"><strong>📊 My Stats</strong></div>
+            <div class="card-body">
+                <div class="row text-center g-3">
+                    <div class="col-6">
+                        <h3 class="fw-bold text-primary">{{ total_notes }}</h3>
+                        <p class="text-muted small mb-0">Notes</p>
+                    </div>
+                    <div class="col-6">
+                        <h3 class="fw-bold text-success">{{ total_subjects }}</h3>
+                        <p class="text-muted small mb-0">Subjects</p>
+                    </div>
+                    <div class="col-6">
+                        <h3 class="fw-bold text-warning">{{ mastered }}</h3>
+                        <p class="text-muted small mb-0">Mastered</p>
+                    </div>
+                    <div class="col-6">
+                        <h3 class="fw-bold text-danger">{{ score }}</h3>
+                        <p class="text-muted small mb-0">Points</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-8">
+        <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <strong>✏️ Edit Profile</strong>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('main.profile') }}" enctype="multipart/form-data">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                    <!-- Profile Photo -->
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">📸 Profile Photo</label>
+                        <div class="d-flex align-items-center gap-3 mb-2">
+                            {% if current_user.profile_photo %}
+                            <img src="{{ current_user.profile_photo }}" id="photo-preview"
+                                 style="width:70px; height:70px; border-radius:50%; object-fit:cover;">
+                            {% else %}
+                            <div id="avatar-preview"
+                                 style="width:70px; height:70px; border-radius:50%; background:{{ current_user.avatar_color }};
+                                        display:flex; align-items:center; justify-content:center;
+                                        font-size:1.5rem; font-weight:bold; color:white;">
+                                {{ current_user.initials }}
+                            </div>
+                            <img id="photo-preview" style="width:70px; height:70px; border-radius:50%; object-fit:cover; display:none;">
+                            {% endif %}
+                            <div class="flex-grow-1">
+                                <input type="file" name="profile_photo" id="photo-input"
+                                       accept=".jpg,.jpeg,.png,.gif,.webp"
+                                       class="form-control" onchange="previewPhoto(this)">
+                                <small class="text-muted">JPG, PNG, GIF or WEBP. Max 2MB.</small>
+                            </div>
+                        </div>
+                        {% if current_user.profile_photo %}
+                        <div class="form-check mt-2">
+                            <input class="form-check-input" type="checkbox" name="remove_photo" id="remove_photo">
+                            <label class="form-check-label text-danger" for="remove_photo">Remove current photo</label>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Avatar Color -->
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">🎨 Avatar Color <small class="text-muted">(used when no photo)</small></label>
+                        <div class="d-flex flex-wrap gap-2">
+                            {% set colors = ['#0d6efd','#dc3545','#198754','#ffc107','#0dcaf0','#6f42c1','#fd7e14','#20c997','#e83e8c','#6c757d'] %}
+                            {% for color in colors %}
+                            <div onclick="selectColor('{{ color }}', this)"
+                                 style="width:38px; height:38px; border-radius:50%; background:{{ color }};
+                                        cursor:pointer; border: 3px solid {% if current_user.avatar_color == color %}#000{% else %}transparent{% endif %};">
+                            </div>
+                            {% endfor %}
+                        </div>
+                        <input type="hidden" name="avatar_color" id="avatar_color" value="{{ current_user.avatar_color }}">
+                    </div>
+
+                    <!-- Bio -->
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">📝 Bio</label>
+                        <textarea name="bio" class="form-control" rows="3" maxlength="200"
+                                  placeholder="Tell others about yourself...">{{ current_user.bio or '' }}</textarea>
+                        <small class="text-muted">Max 200 characters</small>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-lg w-100">
+                        <i class="bi bi-save"></i> Save Profile
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function previewPhoto(input) {
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            let preview = document.getElementById('photo-preview');
+            let avatarPreview = document.getElementById('avatar-preview');
+            if (preview) { preview.src = e.target.result; preview.style.display = 'block'; }
+            if (avatarPreview) avatarPreview.style.display = 'none';
+        };
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+
+function selectColor(color, el) {
+    document.getElementById('avatar_color').value = color;
+    let ap = document.getElementById('avatar-preview');
+    if (ap) ap.style.background = color;
+    document.querySelectorAll('[onclick^="selectColor"]').forEach(e => e.style.border = '3px solid transparent');
+    el.style.border = '3px solid #000';
+}
+</script>
+{% endblock %}

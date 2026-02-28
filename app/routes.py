@@ -1037,6 +1037,10 @@ def join_group():
         return redirect(url_for('main.view_group', group_id=group.id))
     group.members.append(current_user)
     db.session.commit()
+    notif = Notification(user_id=current_user.id, title='Joined Group',
+        message=f'You successfully joined the study group "{group.name}"!', icon='👥')
+    db.session.add(notif)
+    db.session.commit()
     flash(f'You joined {group.name}!', 'success')
     return redirect(url_for('main.view_group', group_id=group.id))
 
@@ -1215,3 +1219,112 @@ def export_note_pdf(note_id):
     except Exception as e:
         flash(f'Error generating PDF: {str(e)}', 'danger')
         return redirect(url_for('main.view_note', note_id=note_id))
+
+
+# ============================================================================
+# PROFILE
+# ============================================================================
+
+from app.models import Notification
+
+@main_bp.route('/profile', methods=['GET', 'POST'])
+@login_required
+def profile():
+    if request.method == 'POST':
+        import base64
+        bio = request.form.get('bio', '').strip()[:200]
+        avatar_color = request.form.get('avatar_color', '#0d6efd')
+        current_user.bio = bio
+        current_user.avatar_color = avatar_color
+
+        # Handle profile photo upload
+        photo = request.files.get('profile_photo')
+        if photo and photo.filename:
+            allowed = ['jpg', 'jpeg', 'png', 'gif', 'webp']
+            ext = photo.filename.rsplit('.', 1)[-1].lower()
+            if ext in allowed:
+                photo_data = photo.read()
+                if len(photo_data) <= 2 * 1024 * 1024:  # Max 2MB
+                    encoded = base64.b64encode(photo_data).decode('utf-8')
+                    current_user.profile_photo = f'data:image/{ext};base64,{encoded}'
+                else:
+                    flash('Photo too large. Max size is 2MB.', 'warning')
+            else:
+                flash('Invalid file type. Use JPG, PNG, GIF or WEBP.', 'warning')
+
+        # Remove photo if requested
+        if request.form.get('remove_photo'):
+            current_user.profile_photo = None
+
+        db.session.commit()
+
+        notif = Notification(
+            user_id=current_user.id,
+            title='Profile Updated',
+            message='Your profile has been updated successfully!',
+            icon='👤'
+        )
+        db.session.add(notif)
+        db.session.commit()
+
+        flash('Profile updated successfully!', 'success')
+        return redirect(url_for('main.profile'))
+
+    # Stats for profile page
+    total_notes = sum(s.note_count for s in current_user.subjects)
+    total_subjects = current_user.subjects.count()
+    mastered = sum(s.notes.filter_by(progress='mastered').count() for s in current_user.subjects)
+    score = (total_notes * 10) + (total_subjects * 5) + (mastered * 20)
+
+    return render_template('profile.html', title='My Profile',
+                           total_notes=total_notes,
+                           total_subjects=total_subjects,
+                           mastered=mastered,
+                           score=score)
+
+
+# ============================================================================
+# NOTIFICATIONS
+# ============================================================================
+
+@main_bp.route('/notifications')
+@login_required
+def notifications():
+    notifs = current_user.notifications.order_by(Notification.created_at.desc()).all()
+    # Mark all as read
+    current_user.notifications.filter_by(is_read=False).update({'is_read': True})
+    db.session.commit()
+    return render_template('notifications.html', title='Notifications', notifications=notifs)
+
+
+@main_bp.route('/notifications/read/<int:notif_id>', methods=['POST'])
+@login_required
+def mark_notification_read(notif_id):
+    notif = Notification.query.get_or_404(notif_id)
+    if notif.user_id != current_user.id:
+        abort(403)
+    notif.is_read = True
+    db.session.commit()
+    return jsonify({'success': True})
+
+
+@main_bp.route('/notifications/clear', methods=['POST'])
+@login_required
+def clear_notifications():
+    current_user.notifications.delete()
+    db.session.commit()
+    flash('All notifications cleared!', 'success')
+    return redirect(url_for('main.notifications'))
+
+
+def send_notification(user_id, title, message, icon='🔔', link=''):
+    """Helper function to send a notification to a user"""
+    notif = Notification(
+        user_id=user_id,
+        title=title,
+        message=message,
+        icon=icon,
+        link=link
+    )
+    db.session.add(notif)
+    db.session.commit()

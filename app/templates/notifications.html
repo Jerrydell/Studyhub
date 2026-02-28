@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Notifications - StudyHub{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>🔔 Notifications</h2>
+    {% if notifications %}
+    <form method="POST" action="{{ url_for('main.clear_notifications') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="btn btn-outline-danger btn-sm"
+                onclick="return confirm('Clear all notifications?')">
+            <i class="bi bi-trash"></i> Clear All
+        </button>
+    </form>
+    {% endif %}
+</div>
+
+{% if notifications %}
+<div class="card shadow-sm">
+    <div class="list-group list-group-flush">
+        {% for notif in notifications %}
+        <div class="list-group-item {% if not notif.is_read %}bg-light border-start border-primary border-3{% endif %}">
+            <div class="d-flex align-items-start gap-3">
+                <span style="font-size:1.8rem;">{{ notif.icon }}</span>
+                <div class="flex-grow-1">
+                    <div class="d-flex justify-content-between">
+                        <h6 class="mb-1 fw-bold">{{ notif.title }}</h6>
+                        <small class="text-muted">{{ notif.created_at.strftime('%b %d, %Y %I:%M %p') }}</small>
+                    </div>
+                    <p class="mb-0 text-muted">{{ notif.message }}</p>
+                    {% if notif.link %}
+                    <a href="{{ notif.link }}" class="btn btn-sm btn-outline-primary mt-2">View</a>
+                    {% endif %}
+                </div>
+                {% if not notif.is_read %}
+                <span class="badge bg-primary rounded-pill">New</span>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+{% else %}
+<div class="card shadow-sm">
+    <div class="card-body text-center py-5">
+        <span style="font-size:4rem;">🔔</span>
+        <h4 class="mt-3">No Notifications</h4>
+        <p class="text-muted">You're all caught up! Notifications will appear here.</p>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

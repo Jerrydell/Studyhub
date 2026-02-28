@@ -17,9 +17,20 @@ class User(UserMixin, db.Model):
     email = db.Column(db.String(120), unique=True, nullable=False, index=True)
     password_hash = db.Column(db.String(255), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    avatar_color = db.Column(db.String(7), default='#0d6efd')
+    bio = db.Column(db.String(200), default='')
 
     subjects = db.relationship('Subject', backref='user', lazy='dynamic', cascade='all, delete-orphan')
     exam_dates = db.relationship('ExamDate', backref='user', lazy='dynamic', cascade='all, delete-orphan')
+    notifications = db.relationship('Notification', backref='user', lazy='dynamic', cascade='all, delete-orphan')
+
+    @property
+    def initials(self):
+        return self.username[:2].upper()
+
+    @property
+    def unread_notifications_count(self):
+        return self.notifications.filter_by(is_read=False).count()
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -171,3 +182,23 @@ class SharedNote(db.Model):
 
     def __repr__(self):
         return f'<SharedNote {self.note_id}>'
+
+
+# ============================================================================
+# NOTIFICATIONS
+# ============================================================================
+
+class Notification(db.Model):
+    __tablename__ = 'notifications'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    title = db.Column(db.String(100), nullable=False)
+    message = db.Column(db.String(300), nullable=False)
+    icon = db.Column(db.String(10), default='🔔')
+    link = db.Column(db.String(200), default='')
+    is_read = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+    def __repr__(self):
+        return f'<Notification {self.title}>'
